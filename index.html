@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.7 - Cloud Synchronized Tracker</title>
+    <title>HydroLog v7.8 - Cloud Login Sync</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -15,6 +15,37 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Auth Modal / Overlay (Shown when not logged in) -->
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-droplet text-xl"></i>
+                </div>
+                <h2 id="auth-modal-title" class="text-xl font-bold text-slate-900">Sign in to HydroLog</h2>
+                <p class="text-xs text-slate-500">Sync your entries securely across phone and web.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Address</label>
+                    <input type="email" id="auth-email" placeholder="you@example.com" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="handleEmailAuth()" id="auth-submit-btn" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md transition">Sign In</button>
+                <div class="text-center">
+                    <button onclick="toggleAuthMode()" id="auth-toggle-mode-btn" class="text-xs text-blue-600 hover:underline font-medium">Need an account? Sign up</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Slide-out Navigation Drawer Backdrop -->
     <div id="drawer-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden transition-opacity" onclick="toggleMenu()"></div>
@@ -28,7 +59,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.7 Cloud Edition</p>
+                    <p class="text-xs text-slate-500">v7.8 Cloud Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -37,7 +68,7 @@
         </div>
 
         <div class="p-5 flex-grow space-y-6 overflow-y-auto">
-            <!-- Quick Actions Section -->
+            <!-- Data Management Section -->
             <div class="space-y-2">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Data Management</p>
                 <button onclick="exportBackupJSON(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-sm font-medium flex items-center space-x-3 transition">
@@ -56,13 +87,16 @@
                 </label>
             </div>
 
-            <!-- App Info Section -->
+            <!-- Account Section -->
             <div class="space-y-2 pt-4 border-t border-slate-100">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cloud Information</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</p>
                 <div class="px-3 py-2 bg-slate-50 rounded-xl space-y-1">
-                    <p class="text-xs font-medium text-slate-700">Database: <span class="text-emerald-600 font-semibold">Firestore Active</span></p>
-                    <p id="drawer-user-id" class="text-[11px] text-slate-400 truncate">Connecting...</p>
+                    <p id="drawer-user-email" class="text-xs font-medium text-slate-700 truncate">Not signed in</p>
                 </div>
+                <button onclick="logoutUser(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-rose-50 text-rose-600 text-sm font-medium flex items-center space-x-3 transition">
+                    <i class="fa-solid fa-right-from-bracket w-5"></i>
+                    <span>Sign Out</span>
+                </button>
             </div>
         </div>
 
@@ -85,9 +119,9 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.7</span>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.8</span>
                         </div>
-                        <p id="user-status-text" class="text-xs text-slate-500">Connecting to Cloud...</p>
+                        <p id="user-status-text" class="text-xs text-slate-500">Checking session...</p>
                     </div>
                 </div>
             </div>
@@ -201,8 +235,8 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-4">
         <div class="max-w-4xl mx-auto px-4 flex items-center justify-between text-xs text-slate-500">
-            <p>HydroLog v7.7 • Cloud Real-Time Sync</p>
-            <p class="text-slate-400">Tap the hamburger menu (☰) for backup options</p>
+            <p>HydroLog v7.8 • Email Login Sync</p>
+            <p class="text-slate-400">Tap ☰ for backup options & sign out</p>
         </div>
     </footer>
 
@@ -276,7 +310,7 @@
     <!-- Firebase SDKs and App Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -296,6 +330,7 @@
         let currentUser = null;
         let records = [];
         let unsubscribe = null;
+        let isSignUpMode = false;
 
         // Drawer Menu Toggle
         window.toggleMenu = function() {
@@ -310,22 +345,56 @@
             }
         };
 
-        signInAnonymously(auth).catch((error) => {
-            console.error("Authentication error:", error);
-            document.getElementById('user-status-text').innerText = "Auth Error - Offline Mode";
-            document.getElementById('cloud-status-badge').innerHTML = `<span class="text-amber-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Offline / Auth Error</span>`;
-        });
+        window.toggleAuthMode = function() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('auth-modal-title').innerText = isSignUpMode ? "Create HydroLog Account" : "Sign in to HydroLog";
+            document.getElementById('auth-submit-btn').innerText = isSignUpMode ? "Create Account" : "Sign In";
+            document.getElementById('auth-toggle-mode-btn').innerText = isSignUpMode ? "Already have an account? Sign in" : "Need an account? Sign up";
+        };
+
+        window.handleEmailAuth = async function() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            if (!email || !password) return alert("Please enter both email and password.");
+
+            try {
+                if (isSignUpMode) {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+                document.getElementById('auth-overlay').classList.add('hidden');
+            } catch (err) {
+                alert("Authentication error: " + err.message);
+                console.error(err);
+            }
+        };
+
+        window.logoutUser = async function() {
+            try {
+                await signOut(auth);
+            } catch (err) {
+                console.error("Sign out error:", err);
+            }
+        };
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                document.getElementById('user-status-text').innerText = `Cloud Connected`;
-                document.getElementById('drawer-user-id').innerText = `User ID: ${user.uid}`;
+                document.getElementById('user-status-text').innerText = `Cloud Connected (${user.email || 'User'})`;
+                document.getElementById('drawer-user-email').innerText = user.email || user.uid;
                 document.getElementById('cloud-status-badge').innerHTML = `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Live Firestore</span>`;
+                document.getElementById('auth-overlay').classList.add('hidden');
                 setupRealtimeSync(user.uid);
             } else {
                 currentUser = null;
-                document.getElementById('user-status-text').innerText = "Not Connected";
+                document.getElementById('user-status-text').innerText = "Sign in required";
+                document.getElementById('drawer-user-email').innerText = "Not signed in";
+                document.getElementById('cloud-status-badge').innerHTML = `<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Signed Out</span>`;
+                document.getElementById('auth-overlay').classList.remove('hidden');
+                if (unsubscribe) unsubscribe();
+                records = [];
+                renderRecords();
             }
         });
 
@@ -347,7 +416,7 @@
         }
 
         window.logRecord = async function(type) {
-            if (!currentUser) return alert("Not connected to cloud yet. Please wait a moment.");
+            if (!currentUser) return alert("Please sign in first.");
             const now = new Date().toISOString();
             const newRecord = {
                 type: type,
@@ -374,7 +443,7 @@
         };
 
         window.saveCustomRecord = async function() {
-            if (!currentUser) return alert("Not connected to cloud yet.");
+            if (!currentUser) return alert("Please sign in first.");
             const type = document.getElementById('custom-type').value;
             const datetimeVal = document.getElementById('custom-datetime').value;
             const notes = document.getElementById('custom-notes').value;
@@ -533,7 +602,7 @@
         };
 
         window.importBackupJSON = async function(event) {
-            if (!currentUser) return alert("Cloud connection not established.");
+            if (!currentUser) return alert("Please sign in first.");
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -561,7 +630,7 @@
         };
 
         window.importBackupCSV = async function(event) {
-            if (!currentUser) return alert("Cloud connection not established.");
+            if (!currentUser) return alert("Please sign in first.");
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
