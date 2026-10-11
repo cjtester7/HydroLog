@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.4 - Cloud Synchronized Tracker</title>
+    <title>HydroLog v7.5 - Cloud Synchronized Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -30,7 +30,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.4</span>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.5</span>
                         </div>
                         <p id="user-status-text" class="text-xs text-slate-500">Connecting to Cloud...</p>
                     </div>
@@ -146,7 +146,7 @@
     <!-- Footer with Backup Tools -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-4">
         <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <p>HydroLog v7.4 • Cloud Real-Time Sync</p>
+            <p>HydroLog v7.5 • Cloud Real-Time Sync</p>
             <div class="flex flex-wrap items-center gap-3">
                 <button onclick="exportBackupJSON()" class="hover:text-blue-600 font-medium transition flex items-center space-x-1">
                     <i class="fa-solid fa-download"></i> <span>Export JSON</span>
@@ -513,33 +513,47 @@
             reader.onload = async function(e) {
                 try {
                     const text = e.target.result;
-                    const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-                    const rawLines = cleanText.split('\n').filter(l => l.trim().length > 0);
-
-                    if (rawLines.length < 2) throw new Error("CSV file is empty or missing data rows");
-
-                    const parseCSVLine = (line) => {
-                        const result = [];
-                        let cur = '';
+                    
+                    // Robust RFC-4180 CSV parser supporting newlines inside quotes
+                    const parseCSVRows = (str) => {
+                        const rows = [];
+                        let row = [''];
+                        let colIdx = 0;
                         let inQuotes = false;
-                        for (let i = 0; i < line.length; i++) {
-                            const c = line[i];
+                        
+                        for (let i = 0; i < str.length; i++) {
+                            const c = str[i];
+                            const nextC = str[i + 1];
+                            
                             if (c === '"') {
-                                inQuotes = !inQuotes;
+                                if (inQuotes && nextC === '"') {
+                                    row[colIdx] += '"';
+                                    i++;
+                                } else {
+                                    inQuotes = !inQuotes;
+                                }
                             } else if (c === ',' && !inQuotes) {
-                                result.push(cur.trim());
-                                cur = '';
+                                row.push('');
+                                colIdx++;
+                            } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                                if (c === '\r' && nextC === '\n') { i++; }
+                                rows.push(row);
+                                row = [''];
+                                colIdx = 0;
                             } else {
-                                cur += c;
+                                row[colIdx] += c;
                             }
                         }
-                        result.push(cur.trim());
-                        return result.map(s => s.replace(/^"|"$/g, ''));
+                        if (row.length > 1 || row[0] !== '') {
+                            rows.push(row);
+                        }
+                        return rows;
                     };
 
-                    const headers = parseCSVLine(rawLines[0]).map(h => h.toLowerCase());
-                    
-                    // Explicit column index mapping for your exact CSV structure
+                    const parsedRows = parseCSVRows(text);
+                    if (parsedRows.length < 2) throw new Error("CSV file is empty or missing data rows");
+
+                    const headers = parsedRows[0].map(h => h.trim().toLowerCase());
                     const typeIdx = headers.findIndex(h => h.includes('type'));
                     const createdDateIdx = headers.findIndex(h => h.includes('created') || h.includes('date & time'));
                     const modifiedDateIdx = headers.findIndex(h => h.includes('modified'));
@@ -548,8 +562,8 @@
                     let importedCount = 0;
                     const nowIso = new Date().toISOString();
 
-                    for (let i = 1; i < rawLines.length; i++) {
-                        const cols = parseCSVLine(rawLines[i]);
+                    for (let i = 1; i < parsedRows.length; i++) {
+                        const cols = parsedRows[i].map(s => s.trim().replace(/^"|"$/g, ''));
                         if (cols.length < 2 || cols.every(c => c === '')) continue;
 
                         let typeVal = typeIdx !== -1 && cols[typeIdx] ? cols[typeIdx] : cols[1] || 'Number One';
