@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.2 - Cloud Synchronized Tracker</title>
+    <title>HydroLog v7.4 - Cloud Synchronized Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -30,7 +30,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.2</span>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.4</span>
                         </div>
                         <p id="user-status-text" class="text-xs text-slate-500">Connecting to Cloud...</p>
                     </div>
@@ -146,7 +146,7 @@
     <!-- Footer with Backup Tools -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-4">
         <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <p>HydroLog v7.2 • Cloud Real-Time Sync</p>
+            <p>HydroLog v7.4 • Cloud Real-Time Sync</p>
             <div class="flex flex-wrap items-center gap-3">
                 <button onclick="exportBackupJSON()" class="hover:text-blue-600 font-medium transition flex items-center space-x-1">
                     <i class="fa-solid fa-download"></i> <span>Export JSON</span>
@@ -513,8 +513,10 @@
             reader.onload = async function(e) {
                 try {
                     const text = e.target.result;
-                    const lines = text.split('\n').filter(line => line.trim() !== '');
-                    if (lines.length < 2) throw new Error("CSV file is empty");
+                    const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                    const rawLines = cleanText.split('\n').filter(l => l.trim().length > 0);
+
+                    if (rawLines.length < 2) throw new Error("CSV file is empty or missing data rows");
 
                     const parseCSVLine = (line) => {
                         const result = [];
@@ -535,28 +537,39 @@
                         return result.map(s => s.replace(/^"|"$/g, ''));
                     };
 
-                    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+                    const headers = parseCSVLine(rawLines[0]).map(h => h.toLowerCase());
+                    
+                    // Explicit column index mapping for your exact CSV structure
                     const typeIdx = headers.findIndex(h => h.includes('type'));
-                    const dateIdx = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('timestamp'));
-                    const notesIdx = headers.findIndex(h => h.includes('note') || h.includes('comment'));
+                    const createdDateIdx = headers.findIndex(h => h.includes('created') || h.includes('date & time'));
+                    const modifiedDateIdx = headers.findIndex(h => h.includes('modified'));
+                    const commentsIdx = headers.findIndex(h => h.includes('comment') || h.includes('note'));
 
                     let importedCount = 0;
                     const nowIso = new Date().toISOString();
 
-                    for (let i = 1; i < lines.length; i++) {
-                        const cols = parseCSVLine(lines[i]);
-                        if (cols.length < 2) continue;
+                    for (let i = 1; i < rawLines.length; i++) {
+                        const cols = parseCSVLine(rawLines[i]);
+                        if (cols.length < 2 || cols.every(c => c === '')) continue;
 
-                        const typeVal = typeIdx !== -1 && cols[typeIdx] ? cols[typeIdx] : 'Number One';
-                        const dateVal = dateIdx !== -1 && cols[dateIdx] ? new Date(cols[dateIdx]).toISOString() : nowIso;
-                        const notesVal = notesIdx !== -1 && cols[notesIdx] ? cols[notesIdx] : '';
+                        let typeVal = typeIdx !== -1 && cols[typeIdx] ? cols[typeIdx] : cols[1] || 'Number One';
+                        if (typeVal.toLowerCase().includes('one') || typeVal.toLowerCase().includes('1')) typeVal = 'Number One';
+                        if (typeVal.toLowerCase().includes('two') || typeVal.toLowerCase().includes('2')) typeVal = 'Number Two';
 
-                        const validTimestamp = !isNaN(new Date(dateVal).getTime()) ? dateVal : nowIso;
+                        const rawCreated = createdDateIdx !== -1 && cols[createdDateIdx] ? cols[createdDateIdx] : cols[2];
+                        const parsedCreated = new Date(rawCreated);
+                        const validTimestamp = !isNaN(parsedCreated.getTime()) ? parsedCreated.toISOString() : nowIso;
+
+                        const rawModified = modifiedDateIdx !== -1 && cols[modifiedDateIdx] ? cols[modifiedDateIdx] : cols[3];
+                        const parsedModified = new Date(rawModified);
+                        const validModified = !isNaN(parsedModified.getTime()) ? parsedModified.toISOString() : nowIso;
+
+                        const notesVal = commentsIdx !== -1 && cols[commentsIdx] ? cols[commentsIdx] : (cols[4] || '');
 
                         await addDoc(collection(db, `users/${currentUser.uid}/records`), {
                             type: typeVal,
                             timestamp: validTimestamp,
-                            modifiedAt: nowIso,
+                            modifiedAt: validModified,
                             notes: notesVal
                         });
                         importedCount++;
@@ -564,8 +577,8 @@
 
                     alert(`Successfully imported ${importedCount} records from CSV into Firestore!`);
                 } catch (err) {
-                    alert("Error parsing CSV file.");
-                    console.error(err);
+                    alert("Error parsing CSV file. Check console for details.");
+                    console.error("CSV Import Error:", err);
                 }
             };
             reader.readAsText(file);
