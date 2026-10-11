@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.5 - Cloud Synchronized Tracker</title>
+    <title>HydroLog v7.6 - Cloud Synchronized Tracker</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -30,7 +30,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.5</span>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.6</span>
                         </div>
                         <p id="user-status-text" class="text-xs text-slate-500">Connecting to Cloud...</p>
                     </div>
@@ -146,7 +146,7 @@
     <!-- Footer with Backup Tools -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-4">
         <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <p>HydroLog v7.5 • Cloud Real-Time Sync</p>
+            <p>HydroLog v7.6 • Cloud Real-Time Sync</p>
             <div class="flex flex-wrap items-center gap-3">
                 <button onclick="exportBackupJSON()" class="hover:text-blue-600 font-medium transition flex items-center space-x-1">
                     <i class="fa-solid fa-download"></i> <span>Export JSON</span>
@@ -335,11 +335,15 @@
             };
 
             try {
-                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
+                // Close modal immediately for smooth UX
                 closeCustomLogModal();
                 document.getElementById('custom-notes').value = '';
+
+                // Save to Firestore
+                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
             } catch (err) {
                 console.error("Error saving custom record:", err);
+                alert("Error saving record. Please try again.");
             }
         };
 
@@ -368,6 +372,7 @@
             const notes = document.getElementById('edit-notes').value;
 
             try {
+                closeEditModal();
                 const docRef = doc(db, `users/${currentUser.uid}/records`, id);
                 await updateDoc(docRef, {
                     type: type,
@@ -375,7 +380,6 @@
                     modifiedAt: new Date().toISOString(),
                     notes: notes
                 });
-                closeEditModal();
             } catch (err) {
                 console.error("Error updating record:", err);
             }
@@ -513,8 +517,6 @@
             reader.onload = async function(e) {
                 try {
                     const text = e.target.result;
-                    
-                    // Robust RFC-4180 CSV parser supporting newlines inside quotes
                     const parseCSVRows = (str) => {
                         const rows = [];
                         let row = [''];
