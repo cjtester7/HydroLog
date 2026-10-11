@@ -1,794 +1,553 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full overflow-x-hidden">
-<!-- 
-  HydroLog - Bathroom Break Tracker
-  Version: v5.3
-  Build Date: October 2026
-  Features: Automatic Legacy Key Merger (v1-v5), Restored Action Icons, Filter Reset Fallback, Responsive Layout
--->
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
-  <title>HydroLog v5.3 - Bathroom Break Tracker</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- FontAwesome Icons CDN -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    * {
-      touch-action: manipulation;
-      box-sizing: border-box;
-    }
-    html, body {
-      font-family: 'Inter', sans-serif;
-      touch-action: manipulation;
-      max-width: 100vw;
-      overflow-x: hidden;
-      background-color: #f8fafc;
-    }
-    
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-
-    .modal-backdrop {
-      background-color: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(4px);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroLog v7.1 - Cloud Synchronized Tracker with CSV Import</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-  <!-- ================= HEADER ================= -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
-      
-      <!-- Hamburger Menu & Brand Title -->
-      <div class="flex items-center space-x-4">
-        <button id="hamburgerBtn" aria-label="Open Navigation Drawer" class="text-slate-600 hover:text-slate-900 p-2.5 rounded-xl hover:bg-slate-100 focus:outline-none transition active:scale-95">
-          <i class="fa-solid fa-bars text-2xl"></i>
-        </button>
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button id="menu-btn" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                        <i class="fa-solid fa-droplet"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.1</span>
+                        </div>
+                        <p id="user-status-text" class="text-xs text-slate-500">Connecting to Cloud...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <span id="sync-indicator" class="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> Cloud Syncing
+                </span>
+                <div class="bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-lg shadow-2xs">
+                    <span id="record-count">0</span> Records
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <div class="flex items-center space-x-2.5">
-          <div class="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-sm">
-            <i class="fa-solid fa-droplet text-base"></i>
-          </div>
-          <span class="text-xl font-bold text-slate-800 tracking-tight">HydroLog</span>
-          <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full ml-1 border border-blue-100">v5.3</span>
-        </div>
-      </div>
+        <!-- Left Panel: Actions & Quick Log -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Action Card -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <h2 class="font-semibold text-slate-900 text-base flex items-center">
+                    <i class="fa-solid fa-bolt text-amber-500 mr-2"></i> Quick Actions
+                </h2>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="logRecord('Type 1')" class="flex flex-col items-center justify-center p-4 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/60 text-blue-700 transition active:scale-95 group">
+                        <span class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                        </span>
+                        <span class="font-semibold text-sm">Log Entry 1</span>
+                    </button>
+                    <button onclick="logRecord('Type 2')" class="flex flex-col items-center justify-center p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60 text-indigo-700 transition active:scale-95 group">
+                        <span class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition">
+                            <i class="fa-solid fa-plus text-sm"></i>
+                        </span>
+                        <span class="font-semibold text-sm">Log Entry 2</span>
+                    </button>
+                </div>
 
-      <!-- Top Right Actions & Total Counter -->
-      <div class="flex items-center space-x-3">
-        <span id="totalRecordBadge" class="hidden sm:inline-block text-xs font-semibold bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg">
-          0 Records Total
-        </span>
-        <button id="topCustomLogBtn" class="bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white font-semibold text-sm py-2.5 px-4 rounded-full shadow transition flex items-center space-x-2">
-          <i class="fa-solid fa-circle-plus text-base"></i>
-          <span>Custom Log</span>
-        </button>
-      </div>
+                <button onclick="openCustomLogModal()" class="w-full mt-2 py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-clock text-slate-500"></i>
+                    <span>Custom Date/Time Log</span>
+                </button>
+            </div>
+
+            <!-- Stats & Summary Widget -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+                <h2 class="font-semibold text-slate-900 text-base flex items-center">
+                    <i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i> Summary
+                </h2>
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p class="text-xs text-slate-500 font-medium">Total Entries</p>
+                        <p id="stat-total" class="text-xl font-bold text-slate-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p class="text-xs text-slate-500 font-medium">Cloud Status</p>
+                        <p id="stat-status" class="text-xs font-semibold text-emerald-600 mt-2"><i class="fa-solid fa-circle-check"></i> Live Firestore</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Records List & Filtering -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <h2 class="font-semibold text-slate-900 text-base flex items-center">
+                        <i class="fa-solid fa-list text-blue-600 mr-2"></i> Activity Records
+                    </h2>
+                    
+                    <!-- Filter Toolbar -->
+                    <div class="flex items-center space-x-2">
+                        <div class="relative flex-grow sm:flex-grow-0">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-search text-xs"></i>
+                            </span>
+                            <input type="text" id="search-input" oninput="filterRecords()" placeholder="Search notes..." class="w-full sm:w-48 pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <select id="filter-type" onchange="filterRecords()" class="py-1.5 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Types</option>
+                            <option value="Type 1">Type 1</option>
+                            <option value="Type 2">Type 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="overflow-x-auto rounded-xl border border-slate-100">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-3 px-4">Type</th>
+                                <th class="py-3 px-4">Date & Time</th>
+                                <th class="py-3 px-4">Notes</th>
+                                <th class="py-3 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="records-table-body" class="divide-y divide-slate-100 text-sm">
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-slate-400">Loading records from cloud...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer with Backup Tools -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <p>HydroLog v7.1 • Secure Cloud Real-Time Architecture</p>
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="exportBackupJSON()" class="hover:text-blue-600 font-medium transition flex items-center space-x-1">
+                    <i class="fa-solid fa-download"></i> <span>Export JSON</span>
+                </button>
+                <span>•</span>
+                <label class="hover:text-blue-600 font-medium transition flex items-center space-x-1 cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> <span>Import JSON</span>
+                    <input type="file" id="import-json-input" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                </label>
+                <span>•</span>
+                <label class="hover:text-blue-600 font-medium transition flex items-center space-x-1 cursor-pointer text-emerald-600 font-semibold">
+                    <i class="fa-solid fa-file-csv"></i> <span>Import CSV</span>
+                    <input type="file" id="import-csv-input" accept=".csv" onchange="importBackupCSV(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom Log Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900">Custom Date/Time Log</h3>
+                <button onclick="closeCustomLogModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
+                    <select id="custom-type" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        <option value="Type 1">Type 1</option>
+                        <option value="Type 2">Type 2</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
+                    <input type="datetime-local" id="custom-datetime" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes (Optional)</label>
+                    <input type="text" id="custom-notes" placeholder="Add any notes..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeCustomLogModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
+                <button onclick="saveCustomRecord()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Confirm & Save</button>
+            </div>
+        </div>
     </div>
-  </header>
 
-  <!-- ================= HAMBURGER DRAWER ================= -->
-  <div id="drawerOverlay" class="fixed inset-0 modal-backdrop z-40 hidden transition-opacity duration-300 opacity-0"></div>
-  <aside id="drawer" class="fixed top-0 left-0 h-full w-88 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between">
-    <div>
-      <div class="bg-blue-600 p-5 text-white flex items-center justify-between">
-        <div class="flex items-center space-x-2.5">
-          <i class="fa-solid fa-sliders text-xl"></i>
-          <span class="font-bold text-lg">Navigation & Graphics</span>
+    <!-- Edit Record Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900">Edit Record</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <input type="hidden" id="edit-id">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
+                    <select id="edit-type" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                        <option value="Type 1">Type 1</option>
+                        <option value="Type 2">Type 2</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
+                    <input type="datetime-local" id="edit-datetime" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes</label>
+                    <input type="text" id="edit-notes" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                </div>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeEditModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
+                <button onclick="updateRecord()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Update Record</button>
+            </div>
         </div>
-        <button id="closeDrawerBtn" class="p-1.5 text-white/80 hover:text-white">
-          <i class="fa-solid fa-xmark text-xl"></i>
-        </button>
-      </div>
-
-      <nav class="p-5 space-y-3">
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-400 px-3 py-1">Analytics Reports</p>
-
-        <button id="navDashboardBtn" class="w-full text-left px-4 py-3 rounded-xl font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition flex items-center space-x-3.5">
-          <i class="fa-solid fa-chart-line text-blue-500 text-lg w-6"></i>
-          <span class="text-sm">Dashboard Analytics</span>
-        </button>
-
-        <button id="navHourlyBtn" class="w-full text-left px-4 py-3 rounded-xl font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 transition flex items-center space-x-3.5">
-          <i class="fa-solid fa-clock text-indigo-500 text-lg w-6"></i>
-          <span class="text-sm">Hourly Break Frequency</span>
-        </button>
-
-        <button id="navBreakdownBtn" class="w-full text-left px-4 py-3 rounded-xl font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition flex items-center space-x-3.5">
-          <i class="fa-solid fa-chart-pie text-sky-500 text-lg w-6"></i>
-          <span class="text-sm">Type Breakdown</span>
-        </button>
-
-        <hr class="my-4 border-slate-100">
-
-        <p class="text-xs font-bold uppercase tracking-wider text-slate-400 px-3 py-1">Data Tools</p>
-
-        <button id="navExportCsvBtn" class="w-full text-left px-4 py-3 rounded-xl font-medium text-emerald-700 hover:bg-emerald-50 transition flex items-center space-x-3.5">
-          <i class="fa-solid fa-file-csv text-emerald-600 text-lg w-6"></i>
-          <span class="text-sm">Export Records (CSV)</span>
-        </button>
-
-        <button id="navExportJsonBtn" class="w-full text-left px-4 py-3 rounded-xl font-medium text-purple-700 hover:bg-purple-50 transition flex items-center space-x-3.5">
-          <i class="fa-solid fa-file-code text-purple-600 text-lg w-6"></i>
-          <span class="text-sm">Export Backup (JSON)</span>
-        </button>
-      </nav>
     </div>
 
-    <div class="p-5 bg-slate-50 border-t border-slate-100">
-      <p class="text-xs text-slate-400 text-center">HydroLog Mobile v5.3 • Persistent Storage</p>
-    </div>
-  </aside>
+    <!-- Firebase SDKs and App Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  <!-- ================= MAIN HOMEPAGE ================= -->
-  <main class="max-w-6xl w-full mx-auto px-4 py-6 flex-1 space-y-6">
+        // Your live Firebase configuration (hydrolog-4d714)
+        const firebaseConfig = {
+          apiKey: "AIzaSyDwUjjGdLGqact9xXhET81pLDckXxEh8aA",
+          authDomain: "hydrolog-4d714.firebaseapp.com",
+          projectId: "hydrolog-4d714",
+          storageBucket: "hydrolog-4d714.firebasestorage.app",
+          messagingSenderId: "398461806323",
+          appId: "1:398461806323:web:bf0d1a46d348a229957986",
+          measurementId: "G-D7HGNVYCNH"
+        };
 
-    <!-- Quick Log Card -->
-    <section class="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-      <div>
-        <h2 class="text-2xl font-bold tracking-tight mb-1">Need to log a break?</h2>
-        <p class="text-sm text-blue-100/90 font-medium">Quickly log visits with built-in date & time confirmation.</p>
-      </div>
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-      <div class="flex items-center space-x-3 shrink-0">
-        <button id="btnNumberOne" class="bg-white hover:bg-slate-50 text-slate-800 font-bold px-5 py-3 rounded-xl shadow transition flex items-center space-x-2 active:scale-95">
-          <span class="text-lg">💧</span>
-          <span class="text-sm font-extrabold text-blue-600">Number One</span>
-        </button>
+        let currentUser = null;
+        let records = [];
+        let unsubscribe = null;
 
-        <button id="btnNumberTwo" class="bg-amber-950/80 hover:bg-amber-950 text-white font-bold px-5 py-3 rounded-xl shadow transition flex items-center space-x-2 active:scale-95 border border-amber-800/40">
-          <span class="text-lg">💩</span>
-          <span class="text-sm font-extrabold text-amber-200">Number Two</span>
-        </button>
-      </div>
-    </section>
+        // Authenticate user anonymously to sync with Firestore
+        signInAnonymously(auth).catch((error) => {
+            console.error("Authentication error:", error);
+            document.getElementById('user-status-text').innerText = "Auth Error - Offline Mode";
+        });
 
-    <!-- Filter Toolbar & Table -->
-    <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-      
-      <div class="p-4 bg-slate-50/50 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        
-        <!-- Search Field -->
-        <div class="relative flex-1">
-          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-          <input type="text" id="searchInput" placeholder="Search comments..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2.5">
-          <select id="typeFilter" class="bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="ALL">All Types</option>
-            <option value="Number One">Number One</option>
-            <option value="Number Two">Number Two</option>
-          </select>
-
-          <input type="date" id="dateFilter" class="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-
-          <div class="bg-slate-200/60 p-1 rounded-xl flex items-center space-x-1 text-sm">
-            <button id="tabToday" class="px-3.5 py-1.5 rounded-lg text-slate-600 font-medium transition">Today</button>
-            <button id="tabWeek" class="px-3.5 py-1.5 rounded-lg text-slate-600 font-medium transition">This Week</button>
-            <button id="tabAll" class="px-3.5 py-1.5 rounded-lg bg-white text-slate-900 font-bold shadow-sm transition">All Time</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Table Scroll Container -->
-      <div class="w-full overflow-x-auto">
-        <table class="w-full text-left text-sm min-w-[700px]">
-          <thead class="bg-slate-50 text-slate-400 font-bold text-xs tracking-wider uppercase border-b border-slate-100">
-            <tr>
-              <th class="py-4 px-5">TYPE</th>
-              <th class="py-4 px-5">CREATED DATE & TIME</th>
-              <th class="py-4 px-5">MODIFIED DATE & TIME</th>
-              <th class="py-4 px-5">COMMENTS</th>
-              <th class="py-4 px-5 text-right">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody id="recordsTableBody" class="divide-y divide-slate-100 text-slate-700">
-            <!-- Dynamic Rows -->
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Empty State -->
-      <div id="emptyState" class="py-12 text-center hidden">
-        <p class="text-sm text-slate-400 font-medium mb-3">No break records match the active filter.</p>
-        <button id="resetFiltersBtn" class="text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-4 py-2 rounded-lg transition">
-          Clear Filters & Show All Time
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- ================= FOOTER ================= -->
-  <footer class="bg-slate-50 border-t border-slate-200/60 text-slate-400 text-sm py-4 px-5">
-    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div>
-        © 2026 HydroLog v5.3. Personal wellness tracker.
-      </div>
-
-      <div class="flex items-center space-x-5 text-sm">
-        <label class="hover:text-slate-600 transition cursor-pointer flex items-center space-x-1.5">
-          <i class="fa-solid fa-upload"></i>
-          <span>Import Backup</span>
-          <input type="file" id="jsonFileInput" accept=".json" class="hidden">
-        </label>
-
-        <button id="clearAllBtn" class="text-rose-500 hover:text-rose-700 transition flex items-center space-x-1.5">
-          <i class="fa-solid fa-trash-can"></i>
-          <span>Clear All Data</span>
-        </button>
-      </div>
-    </div>
-  </footer>
-
-  <!-- ================= MODALS ================= -->
-
-  <!-- Save Confirmation Modal -->
-  <div id="saveConfirmModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100">
-      <div class="flex items-center space-x-3.5 border-b border-slate-100 pb-3.5">
-        <div id="confirmBadge" class="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-sky-100 text-sky-700">
-          💧
-        </div>
-        <div>
-          <h3 class="font-bold text-base text-slate-800">Confirm Break Entry</h3>
-          <p class="text-xs text-slate-400">Set date & time or log current visit</p>
-        </div>
-      </div>
-
-      <div class="space-y-3.5">
-        <p class="text-sm text-slate-600">Logging entry for <strong id="confirmTypeLabel">Number One</strong>:</p>
-        
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Date</label>
-            <input type="date" id="confirmDateInput" class="w-full text-sm p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Time</label>
-            <input type="time" id="confirmTimeInput" class="w-full text-sm p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Comments</label>
-          <textarea id="confirmComment" rows="2" placeholder="Optional comments..." class="w-full text-sm p-3 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-3 pt-2">
-        <button id="cancelSaveBtn" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition">Cancel</button>
-        <button id="confirmSaveBtn" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition">Confirm & Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Analytics Modal Overlay -->
-  <div id="analyticsModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 border border-slate-100 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
-        <h3 id="analyticsModalTitle" class="font-bold text-lg text-slate-800">Analytics</h3>
-        <button id="closeAnalyticsBtn" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-xl"></i>
-        </button>
-      </div>
-
-      <div id="analyticsContent" class="h-72 relative w-full">
-        <canvas id="analyticsChartCanvas"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- Edit Modal -->
-  <div id="editModal" class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3.5">
-        <h3 class="font-bold text-base text-slate-800">Edit Break Record</h3>
-        <button id="closeEditModalBtn" class="text-slate-400 hover:text-slate-600 p-1">
-          <i class="fa-solid fa-xmark text-xl"></i>
-        </button>
-      </div>
-
-      <input type="hidden" id="editRecordId">
-
-      <div class="space-y-3.5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Break Type</label>
-          <select id="editType" class="w-full text-sm p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="Number One">Number One 💧</option>
-            <option value="Number Two">Number Two 💩</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Comments</label>
-          <textarea id="editComments" rows="3" class="w-full text-sm p-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-3 pt-2">
-        <button id="cancelEditBtn" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition">Cancel</button>
-        <button id="saveEditBtn" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition">Save Changes</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- JAVASCRIPT LOGIC -->
-  <script>
-    const STORAGE_KEY = 'hydrolog_records_v4';
-    let breakRecords = [];
-    let pendingTypeToSave = null;
-    let chartInstance = null;
-    let activeTimeTab = 'ALL';
-
-    document.addEventListener('DOMContentLoaded', () => {
-      consolidateAndLoadRecords();
-      setupEventListeners();
-      renderTable();
-    });
-
-    // Scans and merges records across all prior version keys to ensure no data loss
-    function consolidateAndLoadRecords() {
-      const legacyKeys = [
-        'hydrolog_records',
-        'hydrolog_records_v1',
-        'hydrolog_records_v2',
-        'hydrolog_records_v3',
-        'hydrolog_records_v4',
-        'hydrolog_records_v5'
-      ];
-
-      let mergedMap = new Map();
-
-      legacyKeys.forEach(key => {
-        try {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              list.forEach(item => {
-                if (item && item.id) {
-                  mergedMap.set(item.id, item);
-                }
-              });
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-status-text').innerText = `Cloud Connected (${user.uid.substring(0, 6)}...)`;
+                setupRealtimeSync(user.uid);
+            } else {
+                currentUser = null;
+                document.getElementById('user-status-text').innerText = "Not Connected";
             }
-          }
-        } catch (e) {
-          console.error('Error reading key:', key, e);
-        }
-      });
-
-      if (mergedMap.size > 0) {
-        breakRecords = Array.from(mergedMap.values());
-      } else {
-        // Seed initial records if completely empty
-        const baseDate = new Date();
-        breakRecords = [
-          {
-            id: '1',
-            type: 'Number One',
-            createdDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-            modifiedDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 2).toISOString(),
-            comments: 'Normal lots of bubbles'
-          },
-          {
-            id: '2',
-            type: 'Number One',
-            createdDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 5).toISOString(),
-            modifiedDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 5).toISOString(),
-            comments: 'Morning glass of water'
-          },
-          {
-            id: '3',
-            type: 'Number Two',
-            createdDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 8).toISOString(),
-            modifiedDate: new Date(baseDate.getTime() - 1000 * 60 * 60 * 8).toISOString(),
-            comments: 'Post-coffee routine'
-          }
-        ];
-      }
-
-      // Sort newest first
-      breakRecords.sort((a, b) => new Date(b.createdDate) - new Date(a.createdDate));
-      saveRecords();
-    }
-
-    function saveRecords() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(breakRecords));
-      const badge = document.getElementById('totalRecordBadge');
-      if (badge) badge.textContent = `${breakRecords.length} Records Total`;
-    }
-
-    function setupEventListeners() {
-      document.getElementById('btnNumberOne').addEventListener('click', () => triggerSaveConfirm('Number One'));
-      document.getElementById('btnNumberTwo').addEventListener('click', () => triggerSaveConfirm('Number Two'));
-      document.getElementById('topCustomLogBtn').addEventListener('click', () => triggerSaveConfirm('Number One'));
-
-      document.getElementById('cancelSaveBtn').addEventListener('click', hideSaveConfirm);
-      document.getElementById('confirmSaveBtn').addEventListener('click', executeSaveConfirm);
-
-      document.getElementById('hamburgerBtn').addEventListener('click', openDrawer);
-      document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
-      document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
-
-      document.getElementById('navDashboardBtn').addEventListener('click', () => { closeDrawer(); showAnalytics('Dashboard Overview', 'dashboard'); });
-      document.getElementById('navHourlyBtn').addEventListener('click', () => { closeDrawer(); showAnalytics('Hourly Break Frequency', 'hourly'); });
-      document.getElementById('navBreakdownBtn').addEventListener('click', () => { closeDrawer(); showAnalytics('Type Breakdown', 'type'); });
-
-      document.getElementById('navExportCsvBtn').addEventListener('click', () => { closeDrawer(); exportToCSV(); });
-      document.getElementById('navExportJsonBtn').addEventListener('click', () => { closeDrawer(); exportToJSON(); });
-      document.getElementById('jsonFileInput').addEventListener('change', importFromJSON);
-
-      document.getElementById('clearAllBtn').addEventListener('click', () => {
-        if (confirm('Clear all logged records from local storage?')) {
-          breakRecords = [];
-          saveRecords();
-          renderTable();
-        }
-      });
-
-      document.getElementById('searchInput').addEventListener('input', renderTable);
-      document.getElementById('typeFilter').addEventListener('change', renderTable);
-      document.getElementById('dateFilter').addEventListener('change', renderTable);
-
-      document.getElementById('tabToday').addEventListener('click', () => setTab('TODAY'));
-      document.getElementById('tabWeek').addEventListener('click', () => setTab('WEEK'));
-      document.getElementById('tabAll').addEventListener('click', () => setTab('ALL'));
-
-      document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
-
-      document.getElementById('closeAnalyticsBtn').addEventListener('click', () => document.getElementById('analyticsModal').classList.add('hidden'));
-      document.getElementById('closeEditModalBtn').addEventListener('click', () => document.getElementById('editModal').classList.add('hidden'));
-      document.getElementById('cancelEditBtn').addEventListener('click', () => document.getElementById('editModal').classList.add('hidden'));
-      document.getElementById('saveEditBtn').addEventListener('click', executeEditSave);
-    }
-
-    function resetFilters() {
-      document.getElementById('searchInput').value = '';
-      document.getElementById('typeFilter').value = 'ALL';
-      document.getElementById('dateFilter').value = '';
-      setTab('ALL');
-    }
-
-    function openDrawer() {
-      const drawer = document.getElementById('drawer');
-      const overlay = document.getElementById('drawerOverlay');
-      overlay.classList.remove('hidden');
-      setTimeout(() => {
-        overlay.classList.remove('opacity-0');
-        drawer.classList.remove('-translate-x-full');
-      }, 10);
-    }
-
-    function closeDrawer() {
-      const drawer = document.getElementById('drawer');
-      const overlay = document.getElementById('drawerOverlay');
-      drawer.classList.add('-translate-x-full');
-      overlay.classList.add('opacity-0');
-      setTimeout(() => overlay.classList.add('hidden'), 300);
-    }
-
-    function triggerSaveConfirm(type) {
-      pendingTypeToSave = type;
-      const modal = document.getElementById('saveConfirmModal');
-      document.getElementById('confirmTypeLabel').textContent = type;
-      document.getElementById('confirmComment').value = '';
-
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-
-      document.getElementById('confirmDateInput').value = `${year}-${month}-${day}`;
-      document.getElementById('confirmTimeInput').value = `${hours}:${minutes}`;
-
-      const badge = document.getElementById('confirmBadge');
-      if (type === 'Number One') {
-        badge.textContent = '💧';
-        badge.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-sky-100 text-sky-700';
-      } else {
-        badge.textContent = '💩';
-        badge.className = 'w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-amber-900 text-amber-200';
-      }
-
-      modal.classList.remove('hidden');
-    }
-
-    function hideSaveConfirm() {
-      document.getElementById('saveConfirmModal').classList.add('hidden');
-      pendingTypeToSave = null;
-    }
-
-    function executeSaveConfirm() {
-      if (!pendingTypeToSave) return;
-
-      const dateVal = document.getElementById('confirmDateInput').value;
-      const timeVal = document.getElementById('confirmTimeInput').value;
-
-      let entryDate = new Date();
-      if (dateVal && timeVal) {
-        entryDate = new Date(`${dateVal}T${timeVal}`);
-      }
-
-      const isoDate = entryDate.toISOString();
-
-      const newRec = {
-        id: Date.now().toString(),
-        type: pendingTypeToSave,
-        createdDate: isoDate,
-        modifiedDate: isoDate,
-        comments: document.getElementById('confirmComment').value.trim()
-      };
-
-      breakRecords.unshift(newRec);
-      saveRecords();
-      renderTable();
-      hideSaveConfirm();
-    }
-
-    function setTab(tab) {
-      activeTimeTab = tab;
-      const btnToday = document.getElementById('tabToday');
-      const btnWeek = document.getElementById('tabWeek');
-      const btnAll = document.getElementById('tabAll');
-
-      [btnToday, btnWeek, btnAll].forEach(b => b.className = 'px-3.5 py-1.5 rounded-lg text-slate-600 font-medium transition');
-
-      if (tab === 'TODAY') btnToday.className = 'px-3.5 py-1.5 rounded-lg bg-white text-slate-900 font-bold shadow-sm transition';
-      if (tab === 'WEEK') btnWeek.className = 'px-3.5 py-1.5 rounded-lg bg-white text-slate-900 font-bold shadow-sm transition';
-      if (tab === 'ALL') btnAll.className = 'px-3.5 py-1.5 rounded-lg bg-white text-slate-900 font-bold shadow-sm transition';
-
-      renderTable();
-    }
-
-    function renderTable() {
-      const tbody = document.getElementById('recordsTableBody');
-      const emptyState = document.getElementById('emptyState');
-
-      const filterType = document.getElementById('typeFilter').value;
-      const dateVal = document.getElementById('dateFilter').value;
-      const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
-
-      const filtered = breakRecords.filter(item => {
-        const matchesType = (filterType === 'ALL') || (item.type === filterType);
-        const matchesSearch = item.comments.toLowerCase().includes(searchVal) ||
-                              formatDateTime(item.createdDate).toLowerCase().includes(searchVal);
-
-        let matchesDate = true;
-        if (dateVal) {
-          const itemDateStr = new Date(item.createdDate).toISOString().split('T')[0];
-          matchesDate = (itemDateStr === dateVal);
-        }
-
-        let matchesTab = true;
-        const recordDate = new Date(item.createdDate);
-        const now = new Date();
-        if (activeTimeTab === 'TODAY') {
-          matchesTab = recordDate.toDateString() === now.toDateString();
-        } else if (activeTimeTab === 'WEEK') {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          matchesTab = recordDate >= sevenDaysAgo;
-        }
-
-        return matchesType && matchesSearch && matchesDate && matchesTab;
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '';
-        emptyState.classList.remove('hidden');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      tbody.innerHTML = filtered.map(rec => {
-        const isNumOne = rec.type === 'Number One';
-        const badgeStyle = isNumOne
-          ? 'bg-sky-100/80 text-sky-800'
-          : 'bg-amber-100/80 text-amber-900';
-        const icon = isNumOne ? '💧' : '💩';
-
-        return `
-          <tr class="hover:bg-slate-50/80 transition">
-            <td class="py-4 px-5">
-              <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeStyle}">
-                <span>${icon}</span>
-                <span>${rec.type}</span>
-              </span>
-            </td>
-            <td class="py-4 px-5 text-slate-700 font-medium">
-              ${formatDateTime(rec.createdDate)}
-            </td>
-            <td class="py-4 px-5 text-slate-400 text-xs">
-              ${formatDateTime(rec.modifiedDate)}
-            </td>
-            <td class="py-4 px-5 text-slate-600 max-w-xs truncate">
-              ${rec.comments ? escapeHtml(rec.comments) : '<span class="text-slate-300 italic">No notes</span>'}
-            </td>
-            <td class="py-4 px-5 text-right space-x-3 text-slate-500">
-              <button onclick="openEditModal('${rec.id}')" title="Edit record" class="p-1.5 hover:text-blue-600 transition inline-flex items-center justify-center">
-                <i class="fa-solid fa-pen text-sm"></i>
-              </button>
-              <button onclick="deleteRecord('${rec.id}')" title="Delete record" class="p-1.5 hover:text-rose-600 transition inline-flex items-center justify-center">
-                <i class="fa-solid fa-trash-can text-sm"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function formatDateTime(isoStr) {
-      if (!isoStr) return '';
-      const d = new Date(isoStr);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ', ' +
-             d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
-    window.openEditModal = function(id) {
-      const rec = breakRecords.find(r => r.id === id);
-      if (!rec) return;
-      document.getElementById('editRecordId').value = rec.id;
-      document.getElementById('editType').value = rec.type;
-      document.getElementById('editComments').value = rec.comments || '';
-      document.getElementById('editModal').classList.remove('hidden');
-    };
-
-    function executeEditSave() {
-      const id = document.getElementById('editRecordId').value;
-      const index = breakRecords.findIndex(r => r.id === id);
-      if (index === -1) return;
-
-      breakRecords[index].type = document.getElementById('editType').value;
-      breakRecords[index].comments = document.getElementById('editComments').value.trim();
-      breakRecords[index].modifiedDate = new Date().toISOString();
-
-      saveRecords();
-      renderTable();
-      document.getElementById('editModal').classList.add('hidden');
-    }
-
-    window.deleteRecord = function(id) {
-      if (confirm('Delete this break entry?')) {
-        breakRecords = breakRecords.filter(r => r.id !== id);
-        saveRecords();
-        renderTable();
-      }
-    };
-
-    function getFormattedExportFilename(ext) {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const hh = String(now.getHours()).padStart(2, '0');
-      const min = String(now.getMinutes()).padStart(2, '0');
-      return `hydrolog_breaks_${yyyy}-${mm}-${dd}_${hh}${min}.${ext}`;
-    }
-
-    function exportToCSV() {
-      if (breakRecords.length === 0) return alert('No records to export.');
-      const headers = ['ID', 'Type', 'Created Date', 'Modified Date', 'Comments'];
-      const rows = breakRecords.map(r => [
-        r.id,
-        `"${r.type}"`,
-        `"${formatDateTime(r.createdDate)}"`,
-        `"${formatDateTime(r.modifiedDate)}"`,
-        `"${(r.comments || '').replace(/"/g, '""')}"`
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      downloadBlob(blob, getFormattedExportFilename('csv'));
-    }
-
-    function exportToJSON() {
-      if (breakRecords.length === 0) return alert('No records to export.');
-      const blob = new Blob([JSON.stringify(breakRecords, null, 2)], { type: 'application/json' });
-      downloadBlob(blob, getFormattedExportFilename('json'));
-    }
-
-    function downloadBlob(blob, filename) {
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function importFromJSON(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const parsed = JSON.parse(evt.target.result);
-          if (Array.isArray(parsed)) {
-            breakRecords = parsed;
-            saveRecords();
-            renderTable();
-            alert('Data imported successfully!');
-          }
-        } catch (err) {
-          alert('Invalid JSON backup file.');
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function showAnalytics(title, type) {
-      document.getElementById('analyticsModalTitle').textContent = title;
-      document.getElementById('analyticsModal').classList.remove('hidden');
-
-      const ctx = document.getElementById('analyticsChartCanvas').getContext('2d');
-      if (chartInstance) chartInstance.destroy();
-
-      const numOneCount = breakRecords.filter(r => r.type === 'Number One').length;
-      const numTwoCount = breakRecords.filter(r => r.type === 'Number Two').length;
-
-      if (type === 'dashboard' || type === 'type') {
-        chartInstance = new Chart(ctx, {
-          type: 'doughnut',
-          data: {
-            labels: ['Number One 💧', 'Number Two 💩'],
-            datasets: [{
-              data: [numOneCount, numTwoCount],
-              backgroundColor: ['#0ea5e9', '#78350f']
-            }]
-          },
-          options: { responsive: true, maintainAspectRatio: false }
-        });
-      } else {
-        const hourly = Array(24).fill(0);
-        breakRecords.forEach(r => {
-          const h = new Date(r.createdDate).getHours();
-          hourly[h]++;
         });
 
-        chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-            datasets: [{
-              label: 'Hourly Frequency',
-              data: hourly,
-              backgroundColor: '#6366f1'
-            }]
-          },
-          options: { responsive: true, maintainAspectRatio: false }
-        });
-      }
-    }
-  </script>
+        function setupRealtimeSync(uid) {
+            if (unsubscribe) unsubscribe();
+            const colRef = collection(db, `users/${uid}/records`);
+            const q = query(colRef, orderBy("timestamp", "desc"));
+
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                records = [];
+                snapshot.forEach((docSnap) => {
+                    records.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderRecords();
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+                document.getElementById('user-status-text').innerText = "Sync Error";
+            });
+        }
+
+        window.logRecord = async function(type) {
+            if (!currentUser) return alert("Not connected to cloud yet. Please wait a second.");
+            const now = new Date();
+            const newRecord = {
+                type: type,
+                timestamp: now.toISOString(),
+                notes: ""
+            };
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
+            } catch (err) {
+                console.error("Error adding record:", err);
+            }
+        };
+
+        window.openCustomLogModal = function() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('custom-datetime').value = now.toISOString().slice(0, 16);
+            document.getElementById('custom-modal').classList.remove('hidden');
+        };
+
+        window.closeCustomLogModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        };
+
+        window.saveCustomRecord = async function() {
+            if (!currentUser) return alert("Not connected to cloud yet.");
+            const type = document.getElementById('custom-type').value;
+            const datetimeVal = document.getElementById('custom-datetime').value;
+            const notes = document.getElementById('custom-notes').value;
+
+            if (!datetimeVal) return alert("Please select a date and time.");
+
+            const newRecord = {
+                type: type,
+                timestamp: new Date(datetimeVal).toISOString(),
+                notes: notes
+            };
+
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
+                closeCustomLogModal();
+                document.getElementById('custom-notes').value = '';
+            } catch (err) {
+                console.error("Error saving custom record:", err);
+            }
+        };
+
+        window.openEditModal = function(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+            document.getElementById('edit-id').value = rec.id;
+            document.getElementById('edit-type').value = rec.type;
+            
+            const dt = new Date(rec.timestamp);
+            dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+            document.getElementById('edit-datetime').value = dt.toISOString().slice(0, 16);
+            document.getElementById('edit-notes').value = rec.notes || '';
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
+
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        };
+
+        window.updateRecord = async function() {
+            if (!currentUser) return;
+            const id = document.getElementById('edit-id').value;
+            const type = document.getElementById('edit-type').value;
+            const datetimeVal = document.getElementById('edit-datetime').value;
+            const notes = document.getElementById('edit-notes').value;
+
+            try {
+                const docRef = doc(db, `users/${currentUser.uid}/records`, id);
+                await updateDoc(docRef, {
+                    type: type,
+                    timestamp: new Date(datetimeVal).toISOString(),
+                    notes: notes
+                });
+                closeEditModal();
+            } catch (err) {
+                console.error("Error updating record:", err);
+            }
+        };
+
+        window.deleteRecord = async function(id) {
+            if (!currentUser) return;
+            if (confirm("Are you sure you want to delete this record?")) {
+                try {
+                    await deleteDoc(doc(db, `users/${currentUser.uid}/records`, id));
+                } catch (err) {
+                    console.error("Error deleting record:", err);
+                }
+            }
+        };
+
+        window.filterRecords = function() {
+            renderRecords();
+        };
+
+        function renderRecords() {
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            const filterType = document.getElementById('filter-type').value;
+
+            const filtered = records.filter(r => {
+                const matchesType = (filterType === 'all' || r.type === filterType);
+                const matchesSearch = !searchText || (r.notes && r.notes.toLowerCase().includes(searchText)) || r.type.toLowerCase().includes(searchText);
+                return matchesType && matchesSearch;
+            });
+
+            document.getElementById('record-count').innerText = records.length;
+            document.getElementById('stat-total').innerText = records.length;
+
+            const tbody = document.getElementById('records-table-body');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">No records found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(r => {
+                const dateObj = new Date(r.timestamp);
+                const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition border-b border-slate-100 last:border-0">
+                        <td class="py-3 px-4 font-medium text-slate-800">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.type === 'Type 1' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'}">
+                                ${r.type}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 text-xs font-medium">
+                            ${dateStr} at ${timeStr}
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 text-xs">
+                            ${r.notes ? escapeHtml(r.notes) : '<span class="text-slate-300 italic">No notes</span>'}
+                        </td>
+                        <td class="py-3 px-4 text-right space-x-2">
+                            <button onclick="openEditModal('${r.id}')" class="text-slate-400 hover:text-blue-600 p-1 transition" title="Edit">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1 transition" title="Delete">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        window.exportBackupJSON = function() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `hydrolog_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        };
+
+        window.importBackupJSON = async function(event) {
+            if (!currentUser) return alert("Cloud connection not established.");
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) throw new Error("Invalid format");
+                    
+                    for (const item of imported) {
+                        await addDoc(collection(db, `users/${currentUser.uid}/records`), {
+                            type: item.type || 'Type 1',
+                            timestamp: item.timestamp || new Date().toISOString(),
+                            notes: item.notes || ''
+                        });
+                    }
+                    alert(`Successfully imported ${imported.length} records into Firestore!`);
+                } catch (err) {
+                    alert("Error parsing backup file. Please ensure it's a valid HydroLog JSON backup.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.importBackupCSV = async function(event) {
+            if (!currentUser) return alert("Cloud connection not established.");
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    if (lines.length < 2) throw new Error("CSV file is empty or missing headers");
+
+                    // Simple CSV parser handling quotes and commas
+                    const parseCSVLine = (line) => {
+                        const result = [];
+                        let cur = '';
+                        let inQuotes = false;
+                        for (let i = 0; i < line.length; i++) {
+                            const c = line[i];
+                            if (c === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (c === ',' && !inQuotes) {
+                                result.push(cur.trim());
+                                cur = '';
+                            } else {
+                                cur += c;
+                            }
+                        }
+                        result.push(cur.trim());
+                        return result.map(s => s.replace(/^"|"$/g, ''));
+                    };
+
+                    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+                    const typeIdx = headers.findIndex(h => h.includes('type'));
+                    const dateIdx = headers.findIndex(h => h.includes('date') || h.includes('time') || h.includes('timestamp'));
+                    const notesIdx = headers.findIndex(h => h.includes('note') || h.includes('comment'));
+
+                    let importedCount = 0;
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = parseCSVLine(lines[i]);
+                        if (cols.length < 2) continue;
+
+                        const typeVal = typeIdx !== -1 && cols[typeIdx] ? cols[typeIdx] : 'Type 1';
+                        const dateVal = dateIdx !== -1 && cols[dateIdx] ? new Date(cols[dateIdx]).toISOString() : new Date().toISOString();
+                        const notesVal = notesIdx !== -1 && cols[notesIdx] ? cols[notesIdx] : '';
+
+                        // Fallback validation on date
+                        const validTimestamp = !isNaN(new Date(dateVal).getTime()) ? dateVal : new Date().toISOString();
+
+                        await addDoc(collection(db, `users/${currentUser.uid}/records`), {
+                            type: typeVal,
+                            timestamp: validTimestamp,
+                            notes: notesVal
+                        });
+                        importedCount++;
+                    }
+
+                    alert(`Successfully imported ${importedCount} records from CSV into Firestore!`);
+                } catch (err) {
+                    alert("Error parsing CSV file. Please ensure it follows the HydroLog CSV format.");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
 </body>
 </html>
