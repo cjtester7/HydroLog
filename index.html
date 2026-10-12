@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.8 - Cloud Login Sync</title>
+    <title>HydroLog v7.9 - Cloud Login Sync</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -19,7 +19,12 @@
     <!-- Auth Modal / Overlay (Shown when not logged in) -->
     <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl space-y-6">
-            <div class="text-center space-y-2">
+            <div class="text-center space-y-2 relative">
+                <!-- Cancel / Dismiss Button -->
+                <button onclick="closeAuthModal()" class="absolute -top-2 -right-2 text-slate-400 hover:text-slate-600 p-2 rounded-full" title="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+                
                 <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-droplet text-xl"></i>
                 </div>
@@ -38,10 +43,12 @@
                 </div>
             </div>
 
-            <div class="space-y-3">
+            <div class="space-y-3 pt-2">
                 <button onclick="handleEmailAuth()" id="auth-submit-btn" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md transition">Sign In</button>
-                <div class="text-center">
+                
+                <div class="flex items-center justify-between pt-1">
                     <button onclick="toggleAuthMode()" id="auth-toggle-mode-btn" class="text-xs text-blue-600 hover:underline font-medium">Need an account? Sign up</button>
+                    <button onclick="closeAuthModal()" class="text-xs text-slate-500 hover:text-slate-700 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">Cancel</button>
                 </div>
             </div>
         </div>
@@ -59,7 +66,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.8 Cloud Edition</p>
+                    <p class="text-xs text-slate-500">v7.9 Cloud Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -93,6 +100,10 @@
                 <div class="px-3 py-2 bg-slate-50 rounded-xl space-y-1">
                     <p id="drawer-user-email" class="text-xs font-medium text-slate-700 truncate">Not signed in</p>
                 </div>
+                <button onclick="openAuthModal(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-blue-50 text-blue-600 text-sm font-medium flex items-center space-x-3 transition">
+                    <i class="fa-solid fa-right-to-bracket w-5"></i>
+                    <span>Sign In / Register</span>
+                </button>
                 <button onclick="logoutUser(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-rose-50 text-rose-600 text-sm font-medium flex items-center space-x-3 transition">
                     <i class="fa-solid fa-right-from-bracket w-5"></i>
                     <span>Sign Out</span>
@@ -119,7 +130,7 @@
                     <div>
                         <div class="flex items-center space-x-2">
                             <h1 class="font-bold text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.8</span>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">v7.9</span>
                         </div>
                         <p id="user-status-text" class="text-xs text-slate-500">Checking session...</p>
                     </div>
@@ -235,8 +246,8 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-4">
         <div class="max-w-4xl mx-auto px-4 flex items-center justify-between text-xs text-slate-500">
-            <p>HydroLog v7.8 • Email Login Sync</p>
-            <p class="text-slate-400">Tap ☰ for backup options & sign out</p>
+            <p>HydroLog v7.9 • Email Login Sync</p>
+            <p class="text-slate-400">Tap ☰ for menu & sign in</p>
         </div>
     </footer>
 
@@ -343,6 +354,14 @@
                 drawer.classList.add('-translate-x-full');
                 backdrop.classList.add('hidden');
             }
+        };
+
+        window.openAuthModal = function() {
+            document.getElementById('auth-overlay').classList.remove('hidden');
+        };
+
+        window.closeAuthModal = function() {
+            document.getElementById('auth-overlay').classList.add('hidden');
         };
 
         window.toggleAuthMode = function() {
