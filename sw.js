@@ -1,11 +1,11 @@
-// HydroLog service worker (v8.1)
+// HydroLog service worker (v8.2)
 // - App shell (the page, manifest, icons): network-first, so updates show up right away;
 //   falls back to the cached copy when offline.
 // - Libraries from CDNs (Tailwind, Firebase SDK, Font Awesome, Google Fonts):
 //   stale-while-revalidate, so the app opens instantly and offline.
 // - Firebase data/auth traffic is never touched; Firestore handles its own offline cache.
 
-const VERSION = 'hydrolog-v8.1';
+const VERSION = 'hydrolog-v8.2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const CDN_CACHE = `${VERSION}-cdn`;
 
