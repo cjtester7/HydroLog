@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- v7.11: removed user-scalable=no / maximum-scale so users can pinch-zoom (accessibility) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.11 - Mobile Friendly</title>
+    <title>HydroLog v7.12 - Mobile Friendly</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -73,7 +73,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.11 Mobile Edition</p>
+                    <p class="text-xs text-slate-500">v7.12 Mobile Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -88,6 +88,11 @@
                 <button onclick="exportBackupJSON(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-sm font-medium flex items-center space-x-3 transition">
                     <i class="fa-solid fa-download text-blue-600 w-5"></i>
                     <span>Export JSON Backup</span>
+                </button>
+                <!-- v7.12: CSV export -->
+                <button onclick="exportRecordsCSV(); toggleMenu();" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-sm font-medium flex items-center space-x-3 transition">
+                    <i class="fa-solid fa-file-csv text-emerald-600 w-5"></i>
+                    <span>Export CSV</span>
                 </button>
                 <label class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 text-sm font-medium flex items-center space-x-3 cursor-pointer transition">
                     <i class="fa-solid fa-file-arrow-up text-emerald-600 w-5"></i>
@@ -138,7 +143,7 @@
                     <div>
                         <div class="flex items-center space-x-1.5">
                             <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.11</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.12</span>
                         </div>
                         <p id="user-status-text" class="text-[11px] sm:text-xs text-slate-500 truncate max-w-[130px] sm:max-w-none">Checking session...</p>
                     </div>
@@ -258,7 +263,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-3 w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between text-[11px] sm:text-xs text-slate-500 gap-1 text-center sm:text-left">
-            <p>HydroLog v7.11 • Mobile Optimized</p>
+            <p>HydroLog v7.12 • Mobile Optimized</p>
             <p class="text-slate-400">Tap ☰ for menu & sign in</p>
         </div>
     </footer>
@@ -836,16 +841,88 @@
 
             // v7.11: Blob instead of data: URI (no size limits on large histories)
             const clean = records.map(({ type, timestamp, modifiedAt, notes }) => ({ type, timestamp, modifiedAt, notes: notes || '' }));
-            const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+            downloadFile(JSON.stringify(clean, null, 2), `hydrolog_backup_${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
+            showToast(`Exported ${clean.length} records.`, { type: 'success' });
+        };
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `hydrolog_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            showToast(`Exported ${clean.length} records.`, { type: 'success' });
+        }
+
+        // ---------- v7.12: Export CSV ----------
+
+        const pad2 = (n) => String(n).padStart(2, '0');
+
+        // Local date as yyyymmdd
+        function localDateStamp(date = new Date()) {
+            return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+        }
+
+        // Daily export counter (01, 02, ...) kept in this browser. Resets each day.
+        // Browsers can't see the Downloads folder, so the count is per device/browser.
+        function nextExportSequence(dateStamp) {
+            const key = `hydrolog_csv_seq_${dateStamp}`;
+            let seq = 1;
+            try {
+                seq = (parseInt(localStorage.getItem(key), 10) || 0) + 1;
+                localStorage.setItem(key, String(seq));
+                // Tidy up counters from previous days
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('hydrolog_csv_seq_') && k !== key) localStorage.removeItem(k);
+                }
+            } catch (err) {
+                // Storage unavailable (private mode, blocked): fall back to 01
+                console.warn("Export counter unavailable:", err);
+            }
+            return pad2(seq);
+        }
+
+        // Quote a CSV cell; guard against spreadsheet formula injection
+        function csvCell(value) {
+            let s = String(value ?? '');
+            if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+            return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        }
+
+        function localDateTimeParts(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return { date: '', time: '' };
+            return {
+                date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
+                time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+            };
+        }
+
+        window.exportRecordsCSV = function() {
+            if (!requireSignIn()) return;
+            if (records.length === 0) return showToast("Nothing to export yet.");
+
+            // Readable local Date/Time columns for spreadsheets, plus ISO columns so the
+            // file re-imports exactly through "Import CSV Backup".
+            const headers = ['Type', 'Date', 'Time', 'Notes', 'Created (ISO)', 'Modified (ISO)'];
+            const rows = [...records]
+                .sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)))
+                .map(r => {
+                    const { date, time } = localDateTimeParts(r.timestamp);
+                    return [r.type, date, time, r.notes || '', r.timestamp || '', r.modifiedAt || ''].map(csvCell).join(',');
+                });
+
+            // BOM so Excel opens it as UTF-8
+            const csv = '﻿' + [headers.join(','), ...rows].join('\r\n') + '\r\n';
+
+            const stamp = localDateStamp();
+            const filename = `hydrolog_${stamp}-${nextExportSequence(stamp)}.csv`;
+            downloadFile(csv, filename, 'text/csv;charset=utf-8');
+            showToast(`Exported ${rows.length} records to ${filename}`, { type: 'success', duration: 5000 });
         };
 
         // ---------- Backup: Import (shared) ----------
@@ -984,7 +1061,8 @@
                         type: col(cols, typeIdx, 1),
                         timestamp: col(cols, createdIdx, 2),
                         modifiedAt: col(cols, modifiedIdx, 3),
-                        notes: col(cols, commentsIdx, 4)
+                        // Undo the export's formula guard ('=..., '+..., etc.)
+                        notes: col(cols, commentsIdx, 4).replace(/^'(?=[=+\-@])/, '')
                     });
                 }
 
