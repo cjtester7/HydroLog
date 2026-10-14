@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <!-- v7.11: removed user-scalable=no / maximum-scale so users can pinch-zoom (accessibility) -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydroLog v7.12 - Mobile Friendly</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>HydroLog v7.13 - Mobile Friendly</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -12,19 +12,58 @@
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        /* v7.13: strict horizontal bounds. "clip" (unlike "hidden") doesn't create a scroll
+           container, so the sticky header keeps working; "hidden" is the fallback. */
+        html, body { max-width: 100%; overflow-x: hidden; }
+        @supports (overflow-x: clip) { html, body { overflow-x: clip; } }
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        img, svg, video { max-width: 100%; height: auto; }
+
+        /* Long notes, emails and IDs wrap instead of pushing the layout wider */
+        .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+        /* Form controls never exceed their container. iOS gives date inputs an intrinsic
+           width that ignores w-full unless appearance is reset. */
+        input, select, textarea, button { max-width: 100%; min-width: 0; }
+        input[type="datetime-local"] {
+            -webkit-appearance: none;
+            appearance: none;
+            display: block;
+            width: 100%;
+            min-height: 2.75rem;
+            text-align: left;
+        }
+        input[type="datetime-local"]::-webkit-date-and-time-value { text-align: left; }
+
+        /* iOS Safari zooms into any focused field under 16px; keep fields at 16px on phones */
+        @media (max-width: 639px) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+
+        /* Modals: fit the visible viewport and scroll inside instead of overflowing */
+        .modal-panel { max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; }
+        @supports not (height: 100dvh) { .modal-panel { max-height: calc(100vh - 2rem); } }
+
+        #toast-container { bottom: calc(1rem + env(safe-area-inset-bottom)); }
         .toast-enter { animation: toast-in 0.2s ease-out; }
         @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col overflow-x-hidden w-full">
+<body class="bg-slate-50 text-slate-800 min-h-screen min-h-dvh flex flex-col overflow-x-hidden w-full">
 
     <!-- Toast Container (v7.11: user-facing feedback instead of console-only errors) -->
     <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none" aria-live="polite"></div>
 
     <!-- Auth Modal / Overlay -->
-    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl space-y-5 mx-4">
+    <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="modal-panel bg-white rounded-2xl sm:rounded-3xl max-w-sm w-full p-5 sm:p-8 shadow-2xl space-y-5">
             <div class="text-center space-y-2 relative">
                 <button onclick="closeAuthModal()" class="absolute -top-1 -right-1 text-slate-400 hover:text-slate-600 p-2 rounded-full" title="Close">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -65,7 +104,7 @@
     <div id="drawer-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 hidden transition-opacity" onclick="toggleMenu()"></div>
 
     <!-- Slide-out Navigation Drawer -->
-    <aside id="nav-drawer" class="fixed inset-y-0 left-0 w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+    <aside id="nav-drawer" class="fixed inset-y-0 left-0 w-[85vw] max-w-72 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
         <div class="p-5 border-b border-slate-100 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
@@ -73,7 +112,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.12 Mobile Edition</p>
+                    <p class="text-xs text-slate-500">v7.13 Mobile Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -131,26 +170,26 @@
 
     <!-- Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs w-full">
-        <div class="max-w-4xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-2 sm:space-x-3">
-                <button onclick="toggleMenu()" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none transition" aria-label="Open menu">
+        <div class="max-w-4xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                <button onclick="toggleMenu()" class="shrink-0 p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none transition" aria-label="Open menu">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <div class="flex items-center space-x-2">
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <div class="flex items-center space-x-2 min-w-0">
+                    <div class="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
                         <i class="fa-solid fa-droplet"></i>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <div class="flex items-center space-x-1.5">
                             <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.12</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.13</span>
                         </div>
-                        <p id="user-status-text" class="text-[11px] sm:text-xs text-slate-500 truncate max-w-[130px] sm:max-w-none">Checking session...</p>
+                        <p id="user-status-text" class="text-[11px] sm:text-xs text-slate-500 truncate max-w-full">Checking session...</p>
                     </div>
                 </div>
             </div>
 
-            <div class="flex items-center">
+            <div class="flex items-center shrink-0">
                 <button onclick="openCustomLogModal()" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold text-xs px-3 py-2 rounded-full shadow-md flex items-center space-x-1 transition active:scale-95 whitespace-nowrap">
                     <i class="fa-solid fa-plus"></i>
                     <span class="hidden sm:inline">Custom Log</span>
@@ -161,7 +200,7 @@
     </header>
 
     <!-- Main Content Area -->
-    <main class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-grow w-full space-y-4 sm:space-y-6 box-border">
+    <main class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-grow w-full min-w-0 space-y-4 sm:space-y-6">
 
         <!-- Quick Log Action Banner -->
         <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-lg space-y-4">
@@ -208,15 +247,15 @@
                 </div>
 
                 <!-- Type & Date Filters -->
-                <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:space-x-2 w-full sm:w-auto">
-                    <select id="filter-type" onchange="filterRecords()" class="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center w-full sm:w-auto">
+                    <select id="filter-type" onchange="filterRecords()" class="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full min-w-0 sm:w-auto">
                         <option value="all">All Types</option>
                         <option value="Number One">Number One</option>
                         <option value="Number Two">Number Two</option>
                     </select>
 
                     <!-- v7.11: "This Week" split into calendar week vs. rolling 7 days -->
-                    <select id="filter-date-range" onchange="filterRecords()" class="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
+                    <select id="filter-date-range" onchange="filterRecords()" class="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full min-w-0 sm:w-auto">
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">This Week</option>
@@ -225,18 +264,30 @@
                 </div>
             </div>
 
-            <!-- Records Table -->
-            <div class="overflow-x-hidden rounded-xl sm:rounded-2xl border border-slate-100">
-                <table class="w-full text-left border-collapse table-fixed sm:table-auto">
+            <!-- Records (v7.13: card list on phones, fixed-layout table on wider screens; no horizontal scroll) -->
+            <div id="records-container" class="rounded-xl sm:rounded-2xl border border-slate-100 overflow-hidden min-w-0">
+                <!-- Phones -->
+                <ul id="records-list" class="sm:hidden divide-y divide-slate-100">
+                    <li class="py-8 px-3 text-center text-slate-400 text-xs">Loading records from cloud...</li>
+                </ul>
+
+                <!-- Tablet / desktop -->
+                <table class="hidden sm:table w-full table-fixed text-left border-collapse">
+                    <colgroup>
+                        <col class="w-28">
+                        <col>
+                        <col class="w-40">
+                        <col class="w-24">
+                    </colgroup>
                     <thead>
-                        <tr class="bg-slate-50 text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
-                            <th class="py-2.5 px-3 w-1/4 sm:w-auto">Type</th>
-                            <th class="py-2.5 px-3 w-5/12 sm:w-auto">Created Date & Time</th>
-                            <th class="py-2.5 px-3 hidden sm:table-cell">Modified</th>
-                            <th class="py-2.5 px-3 w-1/3 sm:w-auto text-right">Actions</th>
+                        <tr class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider border-b border-slate-100">
+                            <th class="py-2.5 px-3">Type</th>
+                            <th class="py-2.5 px-3">Created Date & Time</th>
+                            <th class="py-2.5 px-3">Modified</th>
+                            <th class="py-2.5 px-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="records-table-body" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                    <tbody id="records-table-body" class="divide-y divide-slate-100 text-sm">
                         <tr>
                             <td colspan="4" class="py-8 text-center text-slate-400 text-xs">Loading records from cloud...</td>
                         </tr>
@@ -245,14 +296,14 @@
             </div>
 
             <!-- Summary Bar with Cloud Status -->
-            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100 gap-2">
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100 gap-2 min-w-0">
                 <div class="flex items-center space-x-2">
                     <span class="font-semibold text-slate-700">Showing:</span>
                     <span id="stat-total" class="bg-slate-100 px-2 py-0.5 rounded-md font-bold text-slate-800">0</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span class="font-semibold text-slate-700">Cloud Status:</span>
-                    <span id="cloud-status-badge" class="inline-flex items-center text-slate-500 font-semibold truncate max-w-[200px]">
+                    <span id="cloud-status-badge" class="inline-flex items-center text-slate-500 font-semibold truncate max-w-full">
                         <i class="fa-solid fa-circle-notch fa-spin mr-1 shrink-0"></i> Connecting
                     </span>
                 </div>
@@ -263,17 +314,17 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-3 w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between text-[11px] sm:text-xs text-slate-500 gap-1 text-center sm:text-left">
-            <p>HydroLog v7.12 • Mobile Optimized</p>
+            <p>HydroLog v7.13 • Mobile Optimized</p>
             <p class="text-slate-400">Tap ☰ for menu & sign in</p>
         </div>
     </footer>
 
     <!-- Custom Log Modal -->
-    <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 shadow-xl space-y-4 mx-4">
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="modal-panel bg-white rounded-2xl sm:rounded-3xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="font-bold text-base sm:text-lg text-slate-900">Custom Date/Time Log</h3>
-                <button onclick="closeCustomLogModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                <h3 class="font-bold text-base sm:text-lg text-slate-900 min-w-0 truncate">Custom Date/Time Log</h3>
+                <button onclick="closeCustomLogModal()" class="text-slate-400 hover:text-slate-600 p-2 -mr-2 shrink-0" aria-label="Close">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -294,19 +345,19 @@
                     <input type="text" id="custom-notes" maxlength="500" placeholder="Add any notes..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
             </div>
-            <div class="flex space-x-3 pt-2">
-                <button onclick="closeCustomLogModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
-                <button onclick="saveCustomRecord()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Confirm & Save</button>
+            <div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
+                <button onclick="closeCustomLogModal()" class="w-full sm:flex-1 py-3 sm:py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
+                <button onclick="saveCustomRecord()" class="w-full sm:flex-1 py-3 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Confirm & Save</button>
             </div>
         </div>
     </div>
 
     <!-- Edit Record Modal -->
-    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-6 shadow-xl space-y-4 mx-4">
+    <div id="edit-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="modal-panel bg-white rounded-2xl sm:rounded-3xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
             <div class="flex items-center justify-between">
-                <h3 class="font-bold text-base sm:text-lg text-slate-900">Edit Record</h3>
-                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                <h3 class="font-bold text-base sm:text-lg text-slate-900 min-w-0 truncate">Edit Record</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 p-2 -mr-2 shrink-0" aria-label="Close">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -328,9 +379,9 @@
                     <input type="text" id="edit-notes" maxlength="500" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
             </div>
-            <div class="flex space-x-3 pt-2">
-                <button onclick="closeEditModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
-                <button onclick="updateRecord()" class="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Update Record</button>
+            <div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
+                <button onclick="closeEditModal()" class="w-full sm:flex-1 py-3 sm:py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-medium text-sm text-slate-700 transition">Cancel</button>
+                <button onclick="updateRecord()" class="w-full sm:flex-1 py-3 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-md transition">Update Record</button>
             </div>
         </div>
     </div>
@@ -571,6 +622,7 @@
                 currentUser = user;
                 document.getElementById('user-status-text').innerText = user.email || 'Connected';
                 document.getElementById('drawer-user-email').innerText = user.email || user.uid;
+                document.getElementById('drawer-user-email').title = user.email || user.uid;
                 setCloudStatus('live');
                 closeAuthModal();
                 setupRealtimeSync(user.uid);
@@ -722,7 +774,8 @@
         };
 
         // Row action buttons use data attributes + delegation instead of inline onclick with IDs
-        document.getElementById('records-table-body').addEventListener('click', (e) => {
+        // v7.13: listens on the container so both the phone cards and the table work
+        document.getElementById('records-container').addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
             const id = btn.dataset.id;
@@ -782,55 +835,98 @@
                 filtered.length === records.length ? `${records.length}` : `${filtered.length} of ${records.length}`;
 
             const tbody = document.getElementById('records-table-body');
+            const list = document.getElementById('records-list');
             if (filtered.length === 0) {
                 const msg = records.length === 0 ? 'No records yet.' : 'No records match your filters.';
                 tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-xs">${msg}</td></tr>`;
+                list.innerHTML = `<li class="py-8 px-3 text-center text-slate-400 text-xs">${msg}</li>`;
                 return;
             }
 
-            tbody.innerHTML = filtered.map(r => {
-                const dateObj = new Date(r.timestamp);
-                const validDate = !isNaN(dateObj.getTime());
-                const dateStr = validDate ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
-                const timeStr = validDate ? dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+            const views = filtered.map(recordView);
+            tbody.innerHTML = views.map(tableRowHtml).join('');
+            list.innerHTML = views.map(cardHtml).join('');
+        }
 
-                let modStr = '-';
-                const modObj = new Date(r.modifiedAt);
-                if (r.modifiedAt && !isNaN(modObj.getTime())) {
-                    modStr = `${modObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${modObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
-                }
+        // Shared display values for one record (all user text escaped here)
+        function recordView(r) {
+            const dateObj = new Date(r.timestamp);
+            const validDate = !isNaN(dateObj.getTime());
+            const modObj = new Date(r.modifiedAt);
+            const validMod = r.modifiedAt && !isNaN(modObj.getTime());
+            const type = String(r.type ?? '');
+            const isNumOne = type === 'Number One';
 
-                const type = String(r.type ?? '');
-                const isNumOne = type === 'Number One';
-                const safeId = escapeHtml(r.id);
+            // Compact date for phone cards: drop the year when it's the current year
+            const sameYear = validDate && dateObj.getFullYear() === new Date().getFullYear();
+            const cardDate = validDate
+                ? dateObj.toLocaleDateString(undefined, sameYear
+                    ? { weekday: 'short', month: 'short', day: 'numeric' }
+                    : { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Unknown date';
+            const cardTime = validDate ? dateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
 
-                return `
-                    <tr class="hover:bg-slate-50/85 transition border-b border-slate-100 last:border-0">
-                        <td class="py-3 px-3 align-top">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${isNumOne ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-900'}">
-                                ${isNumOne ? '<i class="fa-solid fa-droplet mr-1 text-blue-600"></i>' : '<span class="mr-1">💩</span>'}
-                                ${escapeHtml(type.replace('Number ', '#'))}
-                            </span>
-                        </td>
-                        <td class="py-3 px-3 align-top text-slate-600">
-                            <div class="font-medium text-xs">${dateStr}</div>
-                            <div class="text-[11px] text-slate-500">${timeStr}</div>
-                            ${r.notes ? `<div class="text-slate-400 text-[11px] mt-0.5 break-words">${escapeHtml(r.notes)}</div>` : ''}
-                        </td>
-                        <td class="py-3 px-3 align-top text-slate-400 text-[11px] hidden sm:table-cell">
-                            ${modStr}
-                        </td>
-                        <td class="py-3 px-3 align-top text-right space-x-1 whitespace-nowrap">
-                            <button data-action="edit" data-id="${safeId}" class="text-slate-400 hover:text-blue-600 p-1.5 transition" title="Edit" aria-label="Edit record">
-                                <i class="fa-solid fa-pen text-xs pointer-events-none"></i>
-                            </button>
-                            <button data-action="delete" data-id="${safeId}" class="text-slate-400 hover:text-rose-600 p-1.5 transition" title="Delete" aria-label="Delete record">
-                                <i class="fa-solid fa-trash text-xs pointer-events-none"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            return {
+                safeId: escapeHtml(r.id),
+                cardDate,
+                cardTime,
+                dateStr: validDate ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date',
+                timeStr: validDate ? dateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '',
+                modStr: validMod
+                    ? `${modObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${modObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+                    : '-',
+                notesHtml: r.notes ? escapeHtml(r.notes) : '',
+                badge: `
+                    <span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold ${isNumOne ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-900'}">
+                        ${isNumOne ? '<i class="fa-solid fa-droplet mr-1 text-blue-600"></i>' : '<span class="mr-1">💩</span>'}
+                        ${escapeHtml(type.replace('Number ', '#'))}
+                    </span>`
+            };
+        }
+
+        function actionButtons(safeId, sizeClasses) {
+            return `
+                <button data-action="edit" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" title="Edit" aria-label="Edit record">
+                    <i class="fa-solid fa-pen text-xs pointer-events-none"></i>
+                </button>
+                <button data-action="delete" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Delete" aria-label="Delete record">
+                    <i class="fa-solid fa-trash text-xs pointer-events-none"></i>
+                </button>`;
+        }
+
+        // Phone card: [badge | date/time | 40px tap targets] with notes full-width underneath
+        function cardHtml(v) {
+            return `
+                <li class="p-3 min-w-0">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="shrink-0">${v.badge}</div>
+                        <div class="flex-1 min-w-0 leading-tight">
+                            <div class="text-sm font-medium text-slate-700 truncate">${v.cardDate}</div>
+                            <div class="text-xs text-slate-500 truncate">${v.cardTime}</div>
+                        </div>
+                        <div class="shrink-0 flex items-center -mr-1.5">
+                            ${actionButtons(v.safeId, 'w-10 h-10')}
+                        </div>
+                    </div>
+                    ${v.notesHtml ? `<div class="text-xs text-slate-500 mt-2 px-2.5 py-1.5 bg-slate-50 rounded-lg wrap-anywhere">${v.notesHtml}</div>` : ''}
+                </li>`;
+        }
+
+        // Tablet/desktop row: fixed column widths, notes wrap inside their cell
+        function tableRowHtml(v) {
+            return `
+                <tr class="hover:bg-slate-50/85 transition">
+                    <td class="py-3 px-3 align-top">${v.badge}</td>
+                    <td class="py-3 px-3 align-top text-slate-600 min-w-0">
+                        <div class="font-medium text-xs">${v.dateStr}</div>
+                        <div class="text-[11px] text-slate-500">${v.timeStr}</div>
+                        ${v.notesHtml ? `<div class="text-slate-400 text-[11px] mt-0.5 wrap-anywhere">${v.notesHtml}</div>` : ''}
+                    </td>
+                    <td class="py-3 px-3 align-top text-slate-400 text-[11px] wrap-anywhere">${v.modStr}</td>
+                    <td class="py-3 px-3 align-top text-right whitespace-nowrap">
+                        ${actionButtons(v.safeId, 'w-8 h-8')}
+                    </td>
+                </tr>`;
         }
 
         // ---------- Backup: Export ----------
