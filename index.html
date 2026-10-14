@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <!-- v7.11: removed user-scalable=no / maximum-scale so users can pinch-zoom (accessibility) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>HydroLog v7.13 - Mobile Friendly</title>
+    <title>HydroLog v8.1 - Mobile Friendly</title>
+    <!-- v8.0: installable app (PWA) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="HydroLog">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -52,6 +61,36 @@
         @supports not (height: 100dvh) { .modal-panel { max-height: calc(100vh - 2rem); } }
 
         #toast-container { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+
+        /* v8.1: phone type scale (< 640px only; tablet/desktop unchanged).
+           16px body · 14px secondary · 12–13px smallest labels. This sits outside Tailwind's
+           utility layer, so it wins over the small text utilities on phones only. */
+        @media (max-width: 639px) {
+            .text-\[10px\] { font-size: 12px; line-height: 16px; }
+            .text-\[11px\] { font-size: 13px; line-height: 18px; }
+            .text-xs       { font-size: 14px; line-height: 20px; }
+            .text-sm       { font-size: 16px; line-height: 22px; }
+            .chart-tip     { font-size: 14px; padding: 8px 12px; }
+            .chart-tip .sw { width: 10px; height: 10px; }
+        }
+
+        /* v8.0: when installed, keep the header clear of the notch / status bar */
+        #app-header { padding-top: env(safe-area-inset-top); }
+
+        /* v8.0: insights chart */
+        .chart-wrap { position: relative; width: 100%; }
+        .chart-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+        .chart-hit { fill: transparent; cursor: pointer; }
+        .chart-col.dim { opacity: 0.35; }
+        .chart-tip {
+            position: absolute; top: 0; z-index: 5; pointer-events: none;
+            background: #0f172a; color: #fff; border-radius: 10px; padding: 6px 10px;
+            font-size: 12px; line-height: 1.35; white-space: nowrap;
+            box-shadow: 0 6px 16px rgb(15 23 42 / 0.18);
+        }
+        .chart-tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+        .range-btn[aria-pressed="true"] { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgb(15 23 42 / 0.08); }
+        .tabular { font-variant-numeric: tabular-nums; }
         .toast-enter { animation: toast-in 0.2s ease-out; }
         @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -112,7 +151,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.13 Mobile Edition</p>
+                    <p class="text-xs text-slate-500">v8.1 Mobile Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -146,6 +185,18 @@
                 <p class="px-3 text-[11px] text-slate-400">Imports skip entries that already exist, so re-importing a backup won't create duplicates.</p>
             </div>
 
+            <!-- v8.0: Install App Section (shown only when installing is possible) -->
+            <div id="install-section" class="space-y-2 pt-4 border-t border-slate-100 hidden">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">App</p>
+                <button id="install-btn" onclick="installApp()" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-blue-50 text-blue-600 text-sm font-medium flex items-center space-x-3 transition hidden">
+                    <i class="fa-solid fa-mobile-screen-button w-5"></i>
+                    <span>Install HydroLog</span>
+                </button>
+                <p id="ios-install-hint" class="px-3 text-xs text-slate-500 hidden">
+                    To install on iPhone: tap <i class="fa-solid fa-arrow-up-from-bracket text-blue-600 mx-0.5"></i> Share in Safari, then <b>Add to Home Screen</b>.
+                </p>
+            </div>
+
             <!-- Account Section -->
             <div class="space-y-2 pt-4 border-t border-slate-100">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</p>
@@ -169,7 +220,7 @@
     </aside>
 
     <!-- Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs w-full">
+    <header id="app-header" class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between gap-2">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
                 <button onclick="toggleMenu()" class="shrink-0 p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none transition" aria-label="Open menu">
@@ -182,7 +233,7 @@
                     <div class="min-w-0">
                         <div class="flex items-center space-x-1.5">
                             <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.13</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v8.1</span>
                         </div>
                         <p id="user-status-text" class="text-[11px] sm:text-xs text-slate-500 truncate max-w-full">Checking session...</p>
                     </div>
@@ -219,6 +270,7 @@
                     <div class="text-left min-w-0">
                         <p class="text-[10px] sm:text-xs text-slate-400 font-medium uppercase tracking-wider">Record</p>
                         <p class="text-base sm:text-lg font-bold text-blue-900 truncate">Number One</p>
+                        <p id="last-one" class="text-[11px] sm:text-xs text-slate-500 truncate" aria-live="polite">&nbsp;</p>
                     </div>
                 </button>
 
@@ -230,10 +282,63 @@
                     <div class="text-left min-w-0">
                         <p class="text-[10px] sm:text-xs text-amber-300/70 font-medium uppercase tracking-wider">Record</p>
                         <p class="text-base sm:text-lg font-bold text-amber-100 truncate">Number Two</p>
+                        <p id="last-two" class="text-[11px] sm:text-xs text-amber-200/80 truncate" aria-live="polite">&nbsp;</p>
                     </div>
                 </button>
             </div>
         </div>
+
+        <!-- v8.0: Insights Card -->
+        <section id="insights" class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-3.5 sm:p-5 shadow-xs space-y-4 min-w-0" aria-labelledby="insights-title">
+            <div class="flex items-center justify-between gap-2">
+                <h2 id="insights-title" class="font-bold text-slate-900 text-base">Insights</h2>
+                <div class="inline-flex shrink-0 bg-slate-100 rounded-lg p-0.5 text-xs font-semibold text-slate-500" role="group" aria-label="Chart range">
+                    <button class="range-btn px-2.5 py-1.5 rounded-md transition" data-range="7" aria-pressed="false">7D</button>
+                    <button class="range-btn px-2.5 py-1.5 rounded-md transition" data-range="14" aria-pressed="true">14D</button>
+                    <button class="range-btn px-2.5 py-1.5 rounded-md transition" data-range="30" aria-pressed="false">30D</button>
+                </div>
+            </div>
+
+            <!-- Stat tiles -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                <div class="rounded-xl bg-slate-50 p-2.5 sm:p-3 min-w-0">
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Today #1</p>
+                    <p id="stat-today-one" class="text-xl sm:text-2xl font-semibold text-slate-900">0</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 p-2.5 sm:p-3 min-w-0">
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Today #2</p>
+                    <p id="stat-today-two" class="text-xl sm:text-2xl font-semibold text-slate-900">0</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 p-2.5 sm:p-3 min-w-0">
+                    <p class="text-[11px] sm:text-xs text-slate-500 font-medium truncate">7-day avg</p>
+                    <p class="text-slate-900"><span id="stat-avg" class="text-xl sm:text-2xl font-semibold">0</span><span class="text-[11px] sm:text-xs text-slate-500"> /day</span></p>
+                    <p id="stat-avg-split" class="text-[10px] sm:text-[11px] text-slate-500 leading-tight sm:leading-normal sm:truncate">&nbsp;</p>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="space-y-2 min-w-0">
+                <div class="flex items-center justify-between gap-2 min-w-0">
+                    <p id="chart-caption" class="text-xs text-slate-500 truncate">Visits per day</p>
+                    <div class="flex items-center gap-3 shrink-0 text-xs text-slate-600" aria-hidden="true">
+                        <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:#2563eb"></span>#1</span>
+                        <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background:#d97706"></span>#2</span>
+                    </div>
+                </div>
+                <div id="chart" class="chart-wrap"></div>
+                <details class="text-xs text-slate-500">
+                    <summary class="cursor-pointer select-none py-1 w-max">Show data table</summary>
+                    <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-slate-100">
+                        <table class="w-full text-left tabular">
+                            <thead class="bg-slate-50 text-slate-500 sticky top-0">
+                                <tr><th class="py-1.5 px-2 font-semibold">Date</th><th class="py-1.5 px-2 font-semibold text-right">#1</th><th class="py-1.5 px-2 font-semibold text-right">#2</th><th class="py-1.5 px-2 font-semibold text-right">Total</th></tr>
+                            </thead>
+                            <tbody id="chart-table" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+        </section>
 
         <!-- Filter & Search Toolbar Card -->
         <div class="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-3.5 sm:p-5 shadow-xs space-y-4">
@@ -314,7 +419,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-3 w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between text-[11px] sm:text-xs text-slate-500 gap-1 text-center sm:text-left">
-            <p>HydroLog v7.13 • Mobile Optimized</p>
+            <p>HydroLog v8.1 • Mobile Optimized</p>
             <p class="text-slate-400">Tap ☰ for menu & sign in</p>
         </div>
     </footer>
@@ -390,7 +495,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Firebase web config is public by design. Data is protected by Firestore Security Rules,
         // which must restrict users/{uid}/records to request.auth.uid == uid.
@@ -406,7 +511,15 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // v8.0: offline persistence. Records are cached on the device (IndexedDB) so the app
+        // opens and logs without a connection; writes queue and sync when back online.
+        let db;
+        try {
+            db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+        } catch (err) {
+            console.warn("Offline persistence unavailable, using memory cache:", err);
+            db = getFirestore(app);
+        }
 
         const RECORD_TYPES = ['Number One', 'Number Two'];
         const BATCH_LIMIT = 450; // Firestore max is 500 writes per batch; leave headroom
@@ -607,15 +720,32 @@
             }
         };
 
+        // ---------- v8.0: Sync status (online / offline / pending writes) ----------
+
+        let syncState = { pending: false, fromCache: false, error: false };
+
         function setCloudStatus(state) {
             const badge = document.getElementById('cloud-status-badge');
             const states = {
                 live: '<span class="text-emerald-600 font-semibold truncate"><i class="fa-solid fa-circle-check mr-1"></i> Live Firestore</span>',
+                syncing: '<span class="text-blue-600 font-semibold truncate"><i class="fa-solid fa-arrows-rotate fa-spin mr-1"></i> Syncing…</span>',
+                offline: '<span class="text-amber-600 font-semibold truncate"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> Offline · saved on device</span>',
                 signedOut: '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Signed Out</span>',
                 error: '<span class="text-rose-600 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> Sync Error</span>'
             };
             badge.innerHTML = states[state] || '';
         }
+
+        function refreshCloudStatus() {
+            if (!currentUser) return setCloudStatus('signedOut');
+            if (syncState.error) return setCloudStatus('error');
+            if (!navigator.onLine) return setCloudStatus('offline');
+            if (syncState.pending) return setCloudStatus('syncing');
+            setCloudStatus('live');
+        }
+
+        window.addEventListener('online', () => { refreshCloudStatus(); showToast("Back online. Syncing changes."); });
+        window.addEventListener('offline', () => { refreshCloudStatus(); showToast("You're offline. Entries are saved on this device and will sync later."); });
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -623,17 +753,18 @@
                 document.getElementById('user-status-text').innerText = user.email || 'Connected';
                 document.getElementById('drawer-user-email').innerText = user.email || user.uid;
                 document.getElementById('drawer-user-email').title = user.email || user.uid;
-                setCloudStatus('live');
+                syncState.error = false;
+                refreshCloudStatus();
                 closeAuthModal();
                 setupRealtimeSync(user.uid);
             } else {
                 currentUser = null;
                 document.getElementById('user-status-text').innerText = "Sign in required";
                 document.getElementById('drawer-user-email').innerText = "Not signed in";
-                setCloudStatus('signedOut');
+                refreshCloudStatus();
                 if (unsubscribe) { unsubscribe(); unsubscribe = null; }
                 records = [];
-                renderRecords();
+                renderAll();
                 openAuthModal();
             }
         });
@@ -642,49 +773,53 @@
             if (unsubscribe) unsubscribe();
             const q = query(collection(db, `users/${uid}/records`), orderBy("timestamp", "desc"));
 
-            unsubscribe = onSnapshot(q, (snapshot) => {
-                records = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-                setCloudStatus('live');
-                renderRecords();
+            // includeMetadataChanges: also fires when pending local writes reach the server
+            unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+                records = snapshot.docs.map(docSnap => ({
+                    id: docSnap.id,
+                    ...docSnap.data(),
+                    _pending: docSnap.metadata.hasPendingWrites
+                }));
+                syncState = { pending: snapshot.metadata.hasPendingWrites, fromCache: snapshot.metadata.fromCache, error: false };
+                refreshCloudStatus();
+                renderAll();
             }, (error) => {
                 console.error("Firestore sync error:", error);
                 document.getElementById('user-status-text').innerText = "Sync Error";
-                setCloudStatus('error');
+                syncState.error = true;
+                refreshCloudStatus();
                 showToast("Couldn't sync with the cloud. Check your connection.", { type: 'error' });
             });
         }
 
         // ---------- Create / Update / Delete ----------
+        // v8.0: writes are applied to the local cache instantly and synced in the background,
+        // so they work offline. We don't await the server; failures surface as a toast later.
 
-        window.logRecord = async function(type) {
+        function backgroundWrite(promise, failMessage) {
+            promise.catch(err => {
+                console.error(failMessage, err);
+                showToast(failMessage, { type: 'error', duration: 6000 });
+            });
+        }
+
+        window.logRecord = function(type) {
             if (!requireSignIn()) return;
             const now = new Date().toISOString();
-            try {
-                const docRef = await addDoc(recordsCollection(), {
-                    type,
-                    timestamp: now,
-                    modifiedAt: now,
-                    notes: ""
-                });
-                const timeStr = new Date(now).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-                showToast(`${type} logged at ${timeStr}`, {
-                    type: 'success',
-                    actionLabel: 'Undo',
-                    duration: 6000,
-                    onAction: async () => {
-                        try {
-                            await deleteDoc(docRef);
-                            showToast("Entry removed.");
-                        } catch (err) {
-                            console.error("Undo failed:", err);
-                            showToast("Couldn't undo. Delete it from the list instead.", { type: 'error' });
-                        }
-                    }
-                });
-            } catch (err) {
-                console.error("Error adding record:", err);
-                showToast("Couldn't save that entry. Please try again.", { type: 'error' });
-            }
+            const docRef = doc(recordsCollection()); // client-generated ID, so Undo works offline too
+            backgroundWrite(setDoc(docRef, { type, timestamp: now, modifiedAt: now, notes: "" }),
+                "Couldn't save that entry. Please try again.");
+
+            const timeStr = new Date(now).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            showToast(`${type} logged at ${timeStr}`, {
+                type: 'success',
+                actionLabel: 'Undo',
+                duration: 6000,
+                onAction: () => {
+                    backgroundWrite(deleteDoc(docRef), "Couldn't undo. Delete it from the list instead.");
+                    showToast("Entry removed.");
+                }
+            });
         };
 
         window.openCustomLogModal = function() {
@@ -697,7 +832,7 @@
             document.getElementById('custom-modal').classList.add('hidden');
         };
 
-        window.saveCustomRecord = async function() {
+        window.saveCustomRecord = function() {
             if (!requireSignIn()) return;
             const type = document.getElementById('custom-type').value;
             const timestamp = toIso(document.getElementById('custom-datetime').value);
@@ -706,20 +841,11 @@
             // Validate before closing the modal so the user can fix input
             if (!timestamp) return showToast("Please choose a valid date and time.", { type: 'error' });
 
-            try {
-                await addDoc(recordsCollection(), {
-                    type,
-                    timestamp,
-                    modifiedAt: new Date().toISOString(),
-                    notes
-                });
-                closeCustomLogModal();
-                document.getElementById('custom-notes').value = '';
-                showToast(`${type} saved.`, { type: 'success' });
-            } catch (err) {
-                console.error("Error saving custom record:", err);
-                showToast("Couldn't save that entry. Please try again.", { type: 'error' });
-            }
+            backgroundWrite(setDoc(doc(recordsCollection()), { type, timestamp, modifiedAt: new Date().toISOString(), notes }),
+                "Couldn't save that entry. Please try again.");
+            closeCustomLogModal();
+            document.getElementById('custom-notes').value = '';
+            showToast(`${type} saved.`, { type: 'success' });
         };
 
         window.openEditModal = function(id) {
@@ -736,7 +862,7 @@
             document.getElementById('edit-modal').classList.add('hidden');
         };
 
-        window.updateRecord = async function() {
+        window.updateRecord = function() {
             if (!requireSignIn()) return;
             const id = document.getElementById('edit-id').value;
             const type = document.getElementById('edit-type').value;
@@ -746,31 +872,19 @@
             // v7.11: validate first (an empty date used to throw silently after the modal closed)
             if (!timestamp) return showToast("Please choose a valid date and time.", { type: 'error' });
 
-            try {
-                await updateDoc(doc(db, `users/${currentUser.uid}/records`, id), {
-                    type,
-                    timestamp,
-                    modifiedAt: new Date().toISOString(),
-                    notes
-                });
-                closeEditModal();
-                showToast("Record updated.", { type: 'success' });
-            } catch (err) {
-                console.error("Error updating record:", err);
-                showToast("Couldn't update that record. Please try again.", { type: 'error' });
-            }
+            backgroundWrite(updateDoc(doc(db, `users/${currentUser.uid}/records`, id), {
+                type, timestamp, modifiedAt: new Date().toISOString(), notes
+            }), "Couldn't update that record. Please try again.");
+            closeEditModal();
+            showToast("Record updated.", { type: 'success' });
         };
 
-        window.deleteRecord = async function(id) {
+        window.deleteRecord = function(id) {
             if (!requireSignIn()) return;
             if (!confirm("Are you sure you want to delete this record?")) return;
-            try {
-                await deleteDoc(doc(db, `users/${currentUser.uid}/records`, id));
-                showToast("Record deleted.");
-            } catch (err) {
-                console.error("Error deleting record:", err);
-                showToast("Couldn't delete that record. Please try again.", { type: 'error' });
-            }
+            backgroundWrite(deleteDoc(doc(db, `users/${currentUser.uid}/records`, id)),
+                "Couldn't delete that record. Please try again.");
+            showToast("Record deleted.");
         };
 
         // Row action buttons use data attributes + delegation instead of inline onclick with IDs
@@ -876,6 +990,7 @@
                     ? `${modObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${modObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
                     : '-',
                 notesHtml: r.notes ? escapeHtml(r.notes) : '',
+                pendingIcon: r._pending ? ' <i class="fa-solid fa-cloud-arrow-up text-amber-500 text-[10px]" title="Waiting to sync" aria-label="Waiting to sync"></i>' : '',
                 badge: `
                     <span class="inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-semibold ${isNumOne ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-900'}">
                         ${isNumOne ? '<i class="fa-solid fa-droplet mr-1 text-blue-600"></i>' : '<span class="mr-1">💩</span>'}
@@ -884,31 +999,32 @@
             };
         }
 
-        function actionButtons(safeId, sizeClasses) {
+        function actionButtons(safeId, sizeClasses, iconClass = 'text-xs') {
             return `
-                <button data-action="edit" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" title="Edit" aria-label="Edit record">
-                    <i class="fa-solid fa-pen text-xs pointer-events-none"></i>
+                <button data-action="edit" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-50 transition" title="Edit" aria-label="Edit record">
+                    <i class="fa-solid fa-pen ${iconClass} pointer-events-none"></i>
                 </button>
-                <button data-action="delete" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Delete" aria-label="Delete record">
-                    <i class="fa-solid fa-trash text-xs pointer-events-none"></i>
+                <button data-action="delete" data-id="${safeId}" class="${sizeClasses} inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-50 transition" title="Delete" aria-label="Delete record">
+                    <i class="fa-solid fa-trash ${iconClass} pointer-events-none"></i>
                 </button>`;
         }
 
-        // Phone card: [badge | date/time | 40px tap targets] with notes full-width underneath
+        // Phone card (v8.1): [badge ........ 44px Edit · 44px Delete]
+        //                    date · time            (full width, 16px)
+        //                    notes                  (full width)
         function cardHtml(v) {
             return `
-                <li class="p-3 min-w-0">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="shrink-0">${v.badge}</div>
-                        <div class="flex-1 min-w-0 leading-tight">
-                            <div class="text-sm font-medium text-slate-700 truncate">${v.cardDate}</div>
-                            <div class="text-xs text-slate-500 truncate">${v.cardTime}</div>
-                        </div>
-                        <div class="shrink-0 flex items-center -mr-1.5">
-                            ${actionButtons(v.safeId, 'w-10 h-10')}
+                <li class="px-3 py-2.5 min-w-0">
+                    <div class="flex items-center justify-between gap-2 min-w-0">
+                        <div class="min-w-0">${v.badge}</div>
+                        <div class="shrink-0 flex items-center gap-1 -mr-2">
+                            ${actionButtons(v.safeId, 'w-11 h-11', 'text-lg')}
                         </div>
                     </div>
-                    ${v.notesHtml ? `<div class="text-xs text-slate-500 mt-2 px-2.5 py-1.5 bg-slate-50 rounded-lg wrap-anywhere">${v.notesHtml}</div>` : ''}
+                    <div class="text-sm text-slate-700 min-w-0">
+                        <span class="font-medium">${v.cardDate}</span><span class="text-slate-500"> · ${v.cardTime}</span>${v.pendingIcon}
+                    </div>
+                    ${v.notesHtml ? `<div class="text-xs text-slate-600 mt-2 px-3 py-2 bg-slate-50 rounded-lg wrap-anywhere">${v.notesHtml}</div>` : ''}
                 </li>`;
         }
 
@@ -919,7 +1035,7 @@
                     <td class="py-3 px-3 align-top">${v.badge}</td>
                     <td class="py-3 px-3 align-top text-slate-600 min-w-0">
                         <div class="font-medium text-xs">${v.dateStr}</div>
-                        <div class="text-[11px] text-slate-500">${v.timeStr}</div>
+                        <div class="text-[11px] text-slate-500">${v.timeStr}${v.pendingIcon}</div>
                         ${v.notesHtml ? `<div class="text-slate-400 text-[11px] mt-0.5 wrap-anywhere">${v.notesHtml}</div>` : ''}
                     </td>
                     <td class="py-3 px-3 align-top text-slate-400 text-[11px] wrap-anywhere">${v.modStr}</td>
@@ -927,6 +1043,337 @@
                         ${actionButtons(v.safeId, 'w-8 h-8')}
                     </td>
                 </tr>`;
+        }
+
+        // ---------- v8.0: Insights ----------
+
+        const CHART_COLORS = { one: '#2563eb', two: '#d97706' }; // validated: CVD ΔE 32, contrast ≥ 3:1 on white
+        const INSIGHT_GAP = 2;      // px surface gap between stacked segments
+        let chartRange = 14;
+        let lastInsightsDay = '';
+        let chartData = [];
+        let chartLastWidth = 0;
+
+        try {
+            const saved = parseInt(localStorage.getItem('hydrolog_chart_range'), 10);
+            if ([7, 14, 30].includes(saved)) chartRange = saved;
+        } catch (err) { /* storage unavailable: keep default */ }
+
+        function dayKey(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // Buckets for the last `days` local calendar days, oldest → newest
+        function countsByDay(days) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const buckets = [];
+            const byKey = new Map();
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const b = { date: d, key: dayKey(d), one: 0, two: 0 };
+                buckets.push(b);
+                byKey.set(b.key, b);
+            }
+            for (const r of records) {
+                const t = new Date(r.timestamp);
+                if (isNaN(t.getTime())) continue;
+                const b = byKey.get(dayKey(t));
+                if (!b) continue;
+                if (r.type === 'Number One') b.one++;
+                else if (r.type === 'Number Two') b.two++;
+            }
+            return buckets;
+        }
+
+        const fmtAvg = (n) => (Math.round(n * 10) / 10).toString();
+
+        function renderInsights() {
+            lastInsightsDay = dayKey(new Date());
+
+            const [today] = countsByDay(1);
+            document.getElementById('stat-today-one').textContent = today.one;
+            document.getElementById('stat-today-two').textContent = today.two;
+
+            const week = countsByDay(7);
+            const one7 = week.reduce((s, b) => s + b.one, 0);
+            const two7 = week.reduce((s, b) => s + b.two, 0);
+            document.getElementById('stat-avg').textContent = fmtAvg((one7 + two7) / 7);
+            // v8.1: keep each pair on one line when the tile wraps
+            document.getElementById('stat-avg-split').innerHTML =
+                `<span class="whitespace-nowrap">#1 ${fmtAvg(one7 / 7)}</span> · <span class="whitespace-nowrap">#2 ${fmtAvg(two7 / 7)}</span>`;
+
+            document.querySelectorAll('.range-btn').forEach(btn =>
+                btn.setAttribute('aria-pressed', String(Number(btn.dataset.range) === chartRange)));
+            document.getElementById('chart-caption').textContent = `Visits per day · last ${chartRange} days`;
+
+            chartData = countsByDay(chartRange);
+            renderChart();
+            renderChartTable();
+        }
+
+        function niceScale(max) {
+            if (max <= 4) return { top: 4, ticks: [0, 2, 4] };
+            const step = [1, 2, 5, 10, 20, 50, 100].find(s => max / s <= 4) || Math.ceil(max / 4);
+            const top = Math.ceil(max / step) * step;
+            const ticks = [];
+            for (let v = 0; v <= top; v += step) ticks.push(v);
+            return { top, ticks: ticks.length > 5 ? [0, top / 2, top].filter(Number.isInteger) : ticks };
+        }
+
+        // Rect with rounded top corners only (square at the baseline)
+        function topRoundedRect(x, y, w, h, r) {
+            r = Math.max(0, Math.min(r, w / 2, h));
+            return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+        }
+
+        function renderChart() {
+            const wrap = document.getElementById('chart');
+            const W = Math.max(240, Math.round(wrap.clientWidth || 300));
+            chartLastWidth = W;
+            // v8.1: 12px labels on phones (10px on larger screens, as before)
+            const FS = window.innerWidth < 640 ? 12 : 10;
+            const H = FS === 12 ? 164 : 156, L = FS === 12 ? 28 : 26, R = 4, T = FS === 12 ? 18 : 16, B = FS === 12 ? 22 : 20;
+            const plotW = W - L - R, plotH = H - T - B;
+            const n = chartData.length;
+            const band = plotW / n;
+            const barW = Math.min(24, Math.max(3, band * 0.62));
+            const totals = chartData.map(b => b.one + b.two);
+            const max = Math.max(0, ...totals);
+            const { top, ticks } = niceScale(max);
+            const y = v => T + plotH * (1 - v / top);
+            // v8.1: label every Nth day based on the room each label actually needs
+            const labelW = n <= 7 ? FS * 2.6 + 4 : FS * 3.2 + 8;  // "Today"/"Mon" vs "10/13"
+            const step = FS === 12
+                ? ([1, 2, 3, 5, 7, 10].find(k => band * k >= labelW) || 10)   // phones
+                : (n <= 7 ? 1 : n <= 14 ? 2 : 5);                            // larger screens: unchanged from v8.0
+            const fmtX = d => n <= 7
+                ? d.toLocaleDateString(undefined, { weekday: 'short' })
+                : d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+
+            let svg = '';
+            // gridlines + y ticks (recessive hairlines)
+            for (const t of ticks) {
+                svg += `<line x1="${L}" x2="${W - R}" y1="${y(t)}" y2="${y(t)}" stroke="#e2e8f0" stroke-width="1" shape-rendering="crispEdges"/>`;
+                svg += `<text x="${L - 6}" y="${y(t) + FS * 0.35}" text-anchor="end" font-size="${FS}" fill="#64748b" class="tabular">${t}</text>`;
+            }
+
+            const maxIdx = max > 0 ? totals.lastIndexOf(max) : -1;
+            chartData.forEach((b, i) => {
+                const cx = L + band * i + band / 2;
+                const x = cx - barW / 2;
+                const base = y(0);
+                const h1 = b.one ? plotH * b.one / top : 0;
+                const h2 = b.two ? plotH * b.two / top : 0;
+                let col = '';
+                if (h1) col += `<path d="${topRoundedRect(x, base - h1, barW, h1, h2 ? 0 : 4)}" fill="${CHART_COLORS.one}"/>`;
+                if (h2) {
+                    const gap = h1 ? INSIGHT_GAP : 0;
+                    const h2v = Math.max(1, h2 - gap);
+                    col += `<path d="${topRoundedRect(x, base - h1 - gap - h2v, barW, h2v, 4)}" fill="${CHART_COLORS.two}"/>`;
+                }
+                svg += `<g class="chart-col" data-i="${i}">${col}</g>`;
+
+                // selective direct label: the busiest day only
+                if (i === maxIdx) {
+                    svg += `<text x="${cx}" y="${y(max) - 5}" text-anchor="middle" font-size="${FS}" font-weight="600" fill="#334155" class="tabular">${max}</text>`;
+                }
+                if ((n - 1 - i) % step === 0) {
+                    const label = i === n - 1 && n <= 7 ? 'Today' : fmtX(b.date);
+                    svg += `<text x="${cx}" y="${H - 5}" text-anchor="middle" font-size="${FS}" fill="#64748b">${escapeHtml(label)}</text>`;
+                }
+                // hit target: the whole band, taller than the mark
+                svg += `<rect class="chart-hit" data-i="${i}" x="${L + band * i}" y="${T - 8}" width="${band}" height="${plotH + 8 + B}"/>`;
+            });
+
+            const total = totals.reduce((a, b) => a + b, 0);
+            const busiest = maxIdx >= 0 ? `Busiest day ${chartData[maxIdx].date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} with ${max}.` : 'No visits logged.';
+            wrap.innerHTML = `
+                <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"
+                     aria-label="Visits per day over the last ${n} days. ${total} total. ${busiest} Data table below.">${svg}</svg>
+                <div class="chart-tip hidden" role="status"></div>`;
+        }
+
+        function showChartTip(i) {
+            const wrap = document.getElementById('chart');
+            const tip = wrap.querySelector('.chart-tip');
+            const b = chartData[i];
+            if (!tip || !b) return;
+            wrap.querySelectorAll('.chart-col').forEach(g => g.classList.toggle('dim', Number(g.dataset.i) !== i));
+            tip.innerHTML = `
+                <div class="font-semibold mb-0.5">${escapeHtml(b.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}</div>
+                <div><span class="sw" style="background:${CHART_COLORS.one}"></span>#1 <b class="tabular">${b.one}</b></div>
+                <div><span class="sw" style="background:${CHART_COLORS.two}"></span>#2 <b class="tabular">${b.two}</b></div>
+                <div class="text-slate-300 mt-0.5">Total <b class="text-white tabular">${b.one + b.two}</b></div>`;
+            tip.classList.remove('hidden');
+            // Sit beside the tapped column, inside the chart, so it never covers the column or the tiles above
+            const W = wrap.clientWidth;
+            const n = chartData.length;
+            const Lm = window.innerWidth < 640 ? 28 : 26;
+            const band = (W - Lm - 4) / n;
+            const cx = Lm + band * (i + 0.5);
+            const offset = Math.max(10, band / 2 + 4);
+            const tw = tip.offsetWidth;
+            let left = cx > W / 2 ? cx - offset - tw : cx + offset;
+            left = Math.min(Math.max(0, left), W - tw);
+            tip.style.left = `${left}px`;
+            tip.style.top = '4px';
+        }
+
+        function hideChartTip() {
+            const wrap = document.getElementById('chart');
+            wrap.querySelector('.chart-tip')?.classList.add('hidden');
+            wrap.querySelectorAll('.chart-col.dim').forEach(g => g.classList.remove('dim'));
+        }
+
+        function renderChartTable() {
+            document.getElementById('chart-table').innerHTML = [...chartData].reverse().map(b => `
+                <tr>
+                    <td class="py-1.5 px-2">${escapeHtml(b.date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}</td>
+                    <td class="py-1.5 px-2 text-right">${b.one}</td>
+                    <td class="py-1.5 px-2 text-right">${b.two}</td>
+                    <td class="py-1.5 px-2 text-right font-semibold">${b.one + b.two}</td>
+                </tr>`).join('');
+        }
+
+        // Hover (mouse) and tap (touch) on the chart
+        (() => {
+            const wrap = document.getElementById('chart');
+            wrap.addEventListener('pointerover', e => {
+                const hit = e.target.closest('.chart-hit');
+                if (hit && e.pointerType === 'mouse') showChartTip(Number(hit.dataset.i));
+            });
+            wrap.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideChartTip(); });
+            wrap.addEventListener('click', e => {
+                const hit = e.target.closest('.chart-hit');
+                if (hit) showChartTip(Number(hit.dataset.i));
+            });
+            document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) hideChartTip(); });
+
+            if ('ResizeObserver' in window) {
+                new ResizeObserver(() => {
+                    if (chartData.length && Math.abs(wrap.clientWidth - chartLastWidth) > 1) { hideChartTip(); renderChart(); }
+                }).observe(wrap);
+            }
+
+            document.querySelectorAll('.range-btn').forEach(btn => btn.addEventListener('click', () => {
+                chartRange = Number(btn.dataset.range);
+                try { localStorage.setItem('hydrolog_chart_range', String(chartRange)); } catch (err) { /* ignore */ }
+                hideChartTip();
+                renderInsights();
+            }));
+        })();
+
+        // ---------- v8.0: Time since last ----------
+
+        function formatAgo(ms) {
+            const m = Math.floor(ms / 60000);
+            if (m < 1) return 'just now';
+            if (m < 60) return `${m}m ago`;
+            const h = Math.floor(m / 60);
+            if (h < 24) return `${h}h ${m % 60}m ago`;
+            const d = Math.floor(h / 24);
+            return `${d}d ${h % 24}h ago`;
+        }
+
+        function updateTimeSince() {
+            const now = Date.now();
+            for (const [type, id] of [['Number One', 'last-one'], ['Number Two', 'last-two']]) {
+                let latest = null;
+                for (const r of records) {
+                    if (r.type !== type) continue;
+                    const t = Date.parse(r.timestamp);
+                    if (isNaN(t) || t > now) continue; // ignore future-dated custom entries
+                    if (latest === null || t > latest) latest = t;
+                }
+                document.getElementById(id).textContent =
+                    !currentUser ? ' ' : latest === null ? 'No entries yet' : `Last: ${formatAgo(now - latest)}`;
+            }
+        }
+
+        function renderAll() {
+            renderRecords();
+            renderInsights();
+            updateTimeSince();
+        }
+
+        // Keep "time since" fresh, and roll the insights over at midnight
+        function tick() {
+            updateTimeSince();
+            if (records.length && dayKey(new Date()) !== lastInsightsDay) renderInsights();
+        }
+        setInterval(tick, 30000);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') tick(); });
+
+        // ---------- v8.0: Installable app (PWA) ----------
+
+        let deferredInstallPrompt = null;
+        const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        function refreshInstallUI() {
+            const section = document.getElementById('install-section');
+            const btn = document.getElementById('install-btn');
+            const hint = document.getElementById('ios-install-hint');
+            const canPrompt = !!deferredInstallPrompt && !isStandalone();
+            const showHint = isIOS && !isStandalone() && !canPrompt;
+            btn.classList.toggle('hidden', !canPrompt);
+            hint.classList.toggle('hidden', !showHint);
+            section.classList.toggle('hidden', !canPrompt && !showHint);
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // show our own Install button instead of the browser mini-bar
+            deferredInstallPrompt = e;
+            refreshInstallUI();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            refreshInstallUI();
+            showToast("HydroLog installed. Open it from your home screen.", { type: 'success' });
+        });
+
+        window.installApp = async function() {
+            if (!deferredInstallPrompt) return;
+            toggleMenu();
+            deferredInstallPrompt.prompt();
+            try { await deferredInstallPrompt.userChoice; } catch (err) { /* dismissed */ }
+            deferredInstallPrompt = null;
+            refreshInstallUI();
+        };
+
+        refreshInstallUI();
+
+        // Service worker: caches the app shell so it opens offline, and offers updates
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', async () => {
+                const hadController = !!navigator.serviceWorker.controller;
+                try {
+                    const reg = await navigator.serviceWorker.register('sw.js');
+                    const promptUpdate = (worker) => showToast("A new version of HydroLog is ready.", {
+                        actionLabel: 'Reload',
+                        duration: 0,
+                        onAction: () => worker.postMessage({ type: 'SKIP_WAITING' })
+                    });
+                    if (reg.waiting && hadController) promptUpdate(reg.waiting);
+                    reg.addEventListener('updatefound', () => {
+                        const worker = reg.installing;
+                        worker?.addEventListener('statechange', () => {
+                            if (worker.state === 'installed' && navigator.serviceWorker.controller) promptUpdate(worker);
+                        });
+                    });
+                    let reloading = false;
+                    navigator.serviceWorker.addEventListener('controllerchange', () => {
+                        if (!hadController || reloading) return; // first install: no reload needed
+                        reloading = true;
+                        location.reload();
+                    });
+                } catch (err) {
+                    console.warn("Service worker registration failed:", err);
+                }
+            });
         }
 
         // ---------- Backup: Export ----------
@@ -1078,6 +1525,7 @@
         window.importBackupJSON = async function(event) {
             const file = readFileFromEvent(event);
             if (!file || !requireSignIn()) return;
+            if (!navigator.onLine) return showToast("Connect to the internet to import a backup.", { type: 'error' });
 
             const dismissBusy = showToast("Importing JSON backup...", { duration: 0 });
             try {
@@ -1131,6 +1579,7 @@
         window.importBackupCSV = async function(event) {
             const file = readFileFromEvent(event);
             if (!file || !requireSignIn()) return;
+            if (!navigator.onLine) return showToast("Connect to the internet to import a backup.", { type: 'error' });
 
             const dismissBusy = showToast("Importing CSV backup...", { duration: 0 });
             try {
