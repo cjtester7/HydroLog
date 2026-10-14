@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HydroLog v7.10 - Mobile Friendly</title>
+    <!-- v7.11: removed user-scalable=no / maximum-scale so users can pinch-zoom (accessibility) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroLog v7.11 - Mobile Friendly</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- FontAwesome for Icons -->
@@ -12,19 +13,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .toast-enter { animation: toast-in 0.2s ease-out; }
+        @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col overflow-x-hidden w-full">
+
+    <!-- Toast Container (v7.11: user-facing feedback instead of console-only errors) -->
+    <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none" aria-live="polite"></div>
 
     <!-- Auth Modal / Overlay -->
     <div id="auth-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl max-w-sm w-full p-6 sm:p-8 shadow-2xl space-y-5 mx-4">
             <div class="text-center space-y-2 relative">
-                <!-- Cancel / Dismiss Button -->
                 <button onclick="closeAuthModal()" class="absolute -top-1 -right-1 text-slate-400 hover:text-slate-600 p-2 rounded-full" title="Close">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
-                
+
                 <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-droplet text-xl"></i>
                 </div>
@@ -34,18 +39,20 @@
 
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Address</label>
-                    <input type="email" id="auth-email" placeholder="you@example.com" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label for="auth-email" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Email Address</label>
+                    <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password</label>
-                    <input type="password" id="auth-password" placeholder="••••••••" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label for="auth-password" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Password</label>
+                    <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+                <!-- v7.11: inline auth error instead of alert() -->
+                <p id="auth-error" class="text-xs text-rose-600 font-medium hidden"></p>
             </div>
 
             <div class="space-y-3 pt-1">
-                <button onclick="handleEmailAuth()" id="auth-submit-btn" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md transition">Sign In</button>
-                
+                <button onclick="handleEmailAuth()" id="auth-submit-btn" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold text-sm shadow-md transition">Sign In</button>
+
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1">
                     <button onclick="toggleAuthMode()" id="auth-toggle-mode-btn" class="text-xs text-blue-600 hover:underline font-medium text-center">Need an account? Sign up</button>
                     <button onclick="closeAuthModal()" class="w-full sm:w-auto text-xs text-slate-500 hover:text-slate-700 font-medium px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition text-center">Cancel</button>
@@ -66,7 +73,7 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-slate-900 text-base">HydroLog Menu</h2>
-                    <p class="text-xs text-slate-500">v7.10 Mobile Edition</p>
+                    <p class="text-xs text-slate-500">v7.11 Mobile Edition</p>
                 </div>
             </div>
             <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
@@ -92,6 +99,7 @@
                     <span>Import JSON Backup</span>
                     <input type="file" accept=".json" onchange="importBackupJSON(event); toggleMenu();" class="hidden">
                 </label>
+                <p class="px-3 text-[11px] text-slate-400">Imports skip entries that already exist, so re-importing a backup won't create duplicates.</p>
             </div>
 
             <!-- Account Section -->
@@ -120,7 +128,7 @@
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-2 sm:space-x-3">
-                <button onclick="toggleMenu()" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none transition">
+                <button onclick="toggleMenu()" class="p-2 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none transition" aria-label="Open menu">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
                 <div class="flex items-center space-x-2">
@@ -130,7 +138,7 @@
                     <div>
                         <div class="flex items-center space-x-1.5">
                             <h1 class="font-bold text-base sm:text-lg text-slate-900 tracking-tight">HydroLog</h1>
-                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.10</span>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full">v7.11</span>
                         </div>
                         <p id="user-status-text" class="text-[11px] sm:text-xs text-slate-500 truncate max-w-[130px] sm:max-w-none">Checking session...</p>
                     </div>
@@ -149,12 +157,13 @@
 
     <!-- Main Content Area -->
     <main class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-grow w-full space-y-4 sm:space-y-6 box-border">
-        
-        <!-- v5.3 Styled Action Banner -->
+
+        <!-- Quick Log Action Banner -->
         <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-lg space-y-4">
             <div class="space-y-1">
                 <h2 class="text-lg sm:text-2xl font-bold tracking-tight">Need to log a break?</h2>
-                <p class="text-blue-100 text-xs sm:text-sm">Quickly log visits with date & time confirmation.</p>
+                <!-- v7.11: copy now matches behavior (instant log + undo) -->
+                <p class="text-blue-100 text-xs sm:text-sm">One tap logs it with the current time. Tap Undo if it was a mistake.</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -201,15 +210,17 @@
                         <option value="Number Two">Number Two</option>
                     </select>
 
+                    <!-- v7.11: "This Week" split into calendar week vs. rolling 7 days -->
                     <select id="filter-date-range" onchange="filterRecords()" class="py-2 px-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full">
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">This Week</option>
+                        <option value="last7">Last 7 Days</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Records Table / Mobile Card Stack -->
+            <!-- Records Table -->
             <div class="overflow-x-hidden rounded-xl sm:rounded-2xl border border-slate-100">
                 <table class="w-full text-left border-collapse table-fixed sm:table-auto">
                     <thead>
@@ -231,13 +242,13 @@
             <!-- Summary Bar with Cloud Status -->
             <div class="pt-2 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 border-t border-slate-100 gap-2">
                 <div class="flex items-center space-x-2">
-                    <span class="font-semibold text-slate-700">Total Entries:</span>
+                    <span class="font-semibold text-slate-700">Showing:</span>
                     <span id="stat-total" class="bg-slate-100 px-2 py-0.5 rounded-md font-bold text-slate-800">0</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span class="font-semibold text-slate-700">Cloud Status:</span>
-                    <span id="cloud-status-badge" class="inline-flex items-center text-emerald-600 font-semibold truncate max-w-[200px]">
-                        <i class="fa-solid fa-circle-check mr-1 shrink-0"></i> Live Firestore
+                    <span id="cloud-status-badge" class="inline-flex items-center text-slate-500 font-semibold truncate max-w-[200px]">
+                        <i class="fa-solid fa-circle-notch fa-spin mr-1 shrink-0"></i> Connecting
                     </span>
                 </div>
             </div>
@@ -247,7 +258,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-3 w-full">
         <div class="max-w-4xl mx-auto px-3 sm:px-4 flex flex-col sm:flex-row items-center justify-between text-[11px] sm:text-xs text-slate-500 gap-1 text-center sm:text-left">
-            <p>HydroLog v7.10 • Mobile Optimized</p>
+            <p>HydroLog v7.11 • Mobile Optimized</p>
             <p class="text-slate-400">Tap ☰ for menu & sign in</p>
         </div>
     </footer>
@@ -263,19 +274,19 @@
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
+                    <label for="custom-type" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
                     <select id="custom-type" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                         <option value="Number One">Number One</option>
                         <option value="Number Two">Number Two</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
+                    <label for="custom-datetime" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
                     <input type="datetime-local" id="custom-datetime" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes / Comments (Optional)</label>
-                    <input type="text" id="custom-notes" placeholder="Add any notes..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    <label for="custom-notes" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes / Comments (Optional)</label>
+                    <input type="text" id="custom-notes" maxlength="500" placeholder="Add any notes..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
             </div>
             <div class="flex space-x-3 pt-2">
@@ -297,19 +308,19 @@
             <input type="hidden" id="edit-id">
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
+                    <label for="edit-type" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Record Type</label>
                     <select id="edit-type" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                         <option value="Number One">Number One</option>
                         <option value="Number Two">Number Two</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
+                    <label for="edit-datetime" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Date & Time</label>
                     <input type="datetime-local" id="edit-datetime" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes / Comments</label>
-                    <input type="text" id="edit-notes" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                    <label for="edit-notes" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notes / Comments</label>
+                    <input type="text" id="edit-notes" maxlength="500" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm">
                 </div>
             </div>
             <div class="flex space-x-3 pt-2">
@@ -323,8 +334,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // Firebase web config is public by design. Data is protected by Firestore Security Rules,
+        // which must restrict users/{uid}/records to request.auth.uid == uid.
         const firebaseConfig = {
           apiKey: "AIzaSyDwUjjGdLGqact9xXhET81pLDckXxEh8aA",
           authDomain: "hydrolog-4d714.firebaseapp.com",
@@ -339,26 +352,131 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        const RECORD_TYPES = ['Number One', 'Number Two'];
+        const BATCH_LIMIT = 450; // Firestore max is 500 writes per batch; leave headroom
+
         let currentUser = null;
         let records = [];
         let unsubscribe = null;
         let isSignUpMode = false;
+        let isAuthBusy = false;
 
-        // Drawer Menu Toggle
+        // ---------- Helpers ----------
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Returns a valid ISO string, or null if the input can't be parsed
+        function toIso(value) {
+            if (value === undefined || value === null || value === '') return null;
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+        }
+
+        // Date -> value for <input type="datetime-local"> in local time
+        function toLocalInputValue(date) {
+            const d = new Date(date);
+            if (isNaN(d.getTime())) return '';
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().slice(0, 16);
+        }
+
+        // Normalizes free-form type text to a valid record type, or null if unrecognized.
+        // Checks "two" first so ambiguous strings don't fall into Number One.
+        function normalizeType(value) {
+            const v = String(value ?? '').trim().toLowerCase();
+            if (!v) return null;
+            if (RECORD_TYPES.map(t => t.toLowerCase()).includes(v)) {
+                return RECORD_TYPES.find(t => t.toLowerCase() === v);
+            }
+            if (v.includes('two') || /(^|[^0-9])2([^0-9]|$)/.test(v)) return 'Number Two';
+            if (v.includes('one') || /(^|[^0-9])1([^0-9]|$)/.test(v)) return 'Number One';
+            return null;
+        }
+
+        // Key used to detect duplicates on import (same type at the same minute)
+        function recordKey(type, isoTimestamp) {
+            return `${type}|${String(isoTimestamp).slice(0, 16)}`;
+        }
+
+        function recordsCollection() {
+            return collection(db, `users/${currentUser.uid}/records`);
+        }
+
+        function requireSignIn() {
+            if (currentUser) return true;
+            showToast("Please sign in first.", { type: 'error' });
+            openAuthModal();
+            return false;
+        }
+
+        // ---------- Toasts ----------
+
+        function showToast(message, { type = 'info', actionLabel = null, onAction = null, duration = 4000 } = {}) {
+            const container = document.getElementById('toast-container');
+            const styles = {
+                info: 'bg-slate-900 text-white',
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white'
+            };
+            const icons = {
+                info: 'fa-circle-info',
+                success: 'fa-circle-check',
+                error: 'fa-triangle-exclamation'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast-enter pointer-events-auto w-full flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg text-sm ${styles[type] || styles.info}`;
+
+            const icon = document.createElement('i');
+            icon.className = `fa-solid ${icons[type] || icons.info} shrink-0`;
+            const text = document.createElement('span');
+            text.className = 'flex-grow';
+            text.textContent = message; // textContent: never interpreted as HTML
+            toast.append(icon, text);
+
+            let timer = null;
+            const dismiss = () => { clearTimeout(timer); toast.remove(); };
+
+            if (actionLabel && onAction) {
+                const btn = document.createElement('button');
+                btn.className = 'font-semibold underline underline-offset-2 shrink-0';
+                btn.textContent = actionLabel;
+                btn.onclick = () => { dismiss(); onAction(); };
+                toast.append(btn);
+            }
+
+            container.append(toast);
+            if (duration) timer = setTimeout(dismiss, duration);
+            return dismiss;
+        }
+
+        // ---------- Drawer & Auth UI ----------
+
         window.toggleMenu = function() {
             const drawer = document.getElementById('nav-drawer');
             const backdrop = document.getElementById('drawer-backdrop');
-            if (drawer.classList.contains('-translate-x-full')) {
-                drawer.classList.remove('-translate-x-full');
-                backdrop.classList.remove('hidden');
-            } else {
-                drawer.classList.add('-translate-x-full');
-                backdrop.classList.add('hidden');
-            }
+            const isClosed = drawer.classList.contains('-translate-x-full');
+            drawer.classList.toggle('-translate-x-full', !isClosed);
+            backdrop.classList.toggle('hidden', !isClosed);
         };
 
+        function setAuthError(message) {
+            const el = document.getElementById('auth-error');
+            el.textContent = message || '';
+            el.classList.toggle('hidden', !message);
+        }
+
         window.openAuthModal = function() {
+            setAuthError('');
             document.getElementById('auth-overlay').classList.remove('hidden');
+            setTimeout(() => document.getElementById('auth-email').focus(), 50);
         };
 
         window.closeAuthModal = function() {
@@ -367,15 +485,37 @@
 
         window.toggleAuthMode = function() {
             isSignUpMode = !isSignUpMode;
+            setAuthError('');
             document.getElementById('auth-modal-title').innerText = isSignUpMode ? "Create HydroLog Account" : "Sign in to HydroLog";
             document.getElementById('auth-submit-btn').innerText = isSignUpMode ? "Create Account" : "Sign In";
             document.getElementById('auth-toggle-mode-btn').innerText = isSignUpMode ? "Already have an account? Sign in" : "Need an account? Sign up";
+            document.getElementById('auth-password').setAttribute('autocomplete', isSignUpMode ? 'new-password' : 'current-password');
         };
 
+        function friendlyAuthError(err) {
+            const map = {
+                'auth/invalid-email': 'That email address doesn\'t look right.',
+                'auth/invalid-credential': 'Email or password is incorrect.',
+                'auth/wrong-password': 'Email or password is incorrect.',
+                'auth/user-not-found': 'No account found with that email.',
+                'auth/email-already-in-use': 'An account with that email already exists. Try signing in.',
+                'auth/weak-password': 'Password must be at least 6 characters.',
+                'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+                'auth/network-request-failed': 'Network error. Check your connection.'
+            };
+            return map[err?.code] || 'Something went wrong. Please try again.';
+        }
+
         window.handleEmailAuth = async function() {
+            if (isAuthBusy) return;
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
-            if (!email || !password) return alert("Please enter both email and password.");
+            if (!email || !password) return setAuthError("Please enter both email and password.");
+
+            const btn = document.getElementById('auth-submit-btn');
+            isAuthBusy = true;
+            btn.disabled = true;
+            setAuthError('');
 
             try {
                 if (isSignUpMode) {
@@ -383,78 +523,116 @@
                 } else {
                     await signInWithEmailAndPassword(auth, email, password);
                 }
-                document.getElementById('auth-overlay').classList.add('hidden');
+                document.getElementById('auth-password').value = '';
+                closeAuthModal();
             } catch (err) {
-                alert("Authentication error: " + err.message);
                 console.error(err);
+                setAuthError(friendlyAuthError(err));
+            } finally {
+                isAuthBusy = false;
+                btn.disabled = false;
             }
         };
+
+        // Enter key submits the auth form
+        ['auth-email', 'auth-password'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleEmailAuth();
+            });
+        });
 
         window.logoutUser = async function() {
             try {
                 await signOut(auth);
+                showToast("Signed out.");
             } catch (err) {
                 console.error("Sign out error:", err);
+                showToast("Couldn't sign out. Please try again.", { type: 'error' });
             }
         };
+
+        function setCloudStatus(state) {
+            const badge = document.getElementById('cloud-status-badge');
+            const states = {
+                live: '<span class="text-emerald-600 font-semibold truncate"><i class="fa-solid fa-circle-check mr-1"></i> Live Firestore</span>',
+                signedOut: '<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Signed Out</span>',
+                error: '<span class="text-rose-600 font-semibold"><i class="fa-solid fa-circle-exclamation mr-1"></i> Sync Error</span>'
+            };
+            badge.innerHTML = states[state] || '';
+        }
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                document.getElementById('user-status-text').innerText = `${user.email || 'Connected'}`;
+                document.getElementById('user-status-text').innerText = user.email || 'Connected';
                 document.getElementById('drawer-user-email').innerText = user.email || user.uid;
-                document.getElementById('cloud-status-badge').innerHTML = `<span class="text-emerald-600 font-semibold truncate"><i class="fa-solid fa-circle-check mr-1"></i> Live Firestore</span>`;
-                document.getElementById('auth-overlay').classList.add('hidden');
+                setCloudStatus('live');
+                closeAuthModal();
                 setupRealtimeSync(user.uid);
             } else {
                 currentUser = null;
                 document.getElementById('user-status-text').innerText = "Sign in required";
                 document.getElementById('drawer-user-email').innerText = "Not signed in";
-                document.getElementById('cloud-status-badge').innerHTML = `<span class="text-amber-600 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Signed Out</span>`;
-                document.getElementById('auth-overlay').classList.remove('hidden');
-                if (unsubscribe) unsubscribe();
+                setCloudStatus('signedOut');
+                if (unsubscribe) { unsubscribe(); unsubscribe = null; }
                 records = [];
                 renderRecords();
+                openAuthModal();
             }
         });
 
         function setupRealtimeSync(uid) {
             if (unsubscribe) unsubscribe();
-            const colRef = collection(db, `users/${uid}/records`);
-            const q = query(colRef, orderBy("timestamp", "desc"));
+            const q = query(collection(db, `users/${uid}/records`), orderBy("timestamp", "desc"));
 
             unsubscribe = onSnapshot(q, (snapshot) => {
-                records = [];
-                snapshot.forEach((docSnap) => {
-                    records.push({ id: docSnap.id, ...docSnap.data() });
-                });
+                records = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+                setCloudStatus('live');
                 renderRecords();
             }, (error) => {
                 console.error("Firestore sync error:", error);
                 document.getElementById('user-status-text').innerText = "Sync Error";
+                setCloudStatus('error');
+                showToast("Couldn't sync with the cloud. Check your connection.", { type: 'error' });
             });
         }
 
+        // ---------- Create / Update / Delete ----------
+
         window.logRecord = async function(type) {
-            if (!currentUser) return alert("Please sign in first.");
+            if (!requireSignIn()) return;
             const now = new Date().toISOString();
-            const newRecord = {
-                type: type,
-                timestamp: now,
-                modifiedAt: now,
-                notes: ""
-            };
             try {
-                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
+                const docRef = await addDoc(recordsCollection(), {
+                    type,
+                    timestamp: now,
+                    modifiedAt: now,
+                    notes: ""
+                });
+                const timeStr = new Date(now).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                showToast(`${type} logged at ${timeStr}`, {
+                    type: 'success',
+                    actionLabel: 'Undo',
+                    duration: 6000,
+                    onAction: async () => {
+                        try {
+                            await deleteDoc(docRef);
+                            showToast("Entry removed.");
+                        } catch (err) {
+                            console.error("Undo failed:", err);
+                            showToast("Couldn't undo. Delete it from the list instead.", { type: 'error' });
+                        }
+                    }
+                });
             } catch (err) {
                 console.error("Error adding record:", err);
+                showToast("Couldn't save that entry. Please try again.", { type: 'error' });
             }
         };
 
         window.openCustomLogModal = function() {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('custom-datetime').value = now.toISOString().slice(0, 16);
+            if (!requireSignIn()) return;
+            document.getElementById('custom-datetime').value = toLocalInputValue(new Date());
             document.getElementById('custom-modal').classList.remove('hidden');
         };
 
@@ -463,27 +641,27 @@
         };
 
         window.saveCustomRecord = async function() {
-            if (!currentUser) return alert("Please sign in first.");
+            if (!requireSignIn()) return;
             const type = document.getElementById('custom-type').value;
-            const datetimeVal = document.getElementById('custom-datetime').value;
-            const notes = document.getElementById('custom-notes').value;
+            const timestamp = toIso(document.getElementById('custom-datetime').value);
+            const notes = document.getElementById('custom-notes').value.trim();
 
-            if (!datetimeVal) return alert("Please select a date and time.");
-            const nowIso = new Date().toISOString();
-
-            const newRecord = {
-                type: type,
-                timestamp: new Date(datetimeVal).toISOString(),
-                modifiedAt: nowIso,
-                notes: notes
-            };
+            // Validate before closing the modal so the user can fix input
+            if (!timestamp) return showToast("Please choose a valid date and time.", { type: 'error' });
 
             try {
+                await addDoc(recordsCollection(), {
+                    type,
+                    timestamp,
+                    modifiedAt: new Date().toISOString(),
+                    notes
+                });
                 closeCustomLogModal();
                 document.getElementById('custom-notes').value = '';
-                await addDoc(collection(db, `users/${currentUser.uid}/records`), newRecord);
+                showToast(`${type} saved.`, { type: 'success' });
             } catch (err) {
                 console.error("Error saving custom record:", err);
+                showToast("Couldn't save that entry. Please try again.", { type: 'error' });
             }
         };
 
@@ -491,11 +669,8 @@
             const rec = records.find(r => r.id === id);
             if (!rec) return;
             document.getElementById('edit-id').value = rec.id;
-            document.getElementById('edit-type').value = rec.type;
-            
-            const dt = new Date(rec.timestamp);
-            dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-            document.getElementById('edit-datetime').value = dt.toISOString().slice(0, 16);
+            document.getElementById('edit-type').value = RECORD_TYPES.includes(rec.type) ? rec.type : 'Number One';
+            document.getElementById('edit-datetime').value = toLocalInputValue(rec.timestamp);
             document.getElementById('edit-notes').value = rec.notes || '';
             document.getElementById('edit-modal').classList.remove('hidden');
         };
@@ -505,40 +680,73 @@
         };
 
         window.updateRecord = async function() {
-            if (!currentUser) return;
+            if (!requireSignIn()) return;
             const id = document.getElementById('edit-id').value;
             const type = document.getElementById('edit-type').value;
-            const datetimeVal = document.getElementById('edit-datetime').value;
-            const notes = document.getElementById('edit-notes').value;
+            const timestamp = toIso(document.getElementById('edit-datetime').value);
+            const notes = document.getElementById('edit-notes').value.trim();
+
+            // v7.11: validate first (an empty date used to throw silently after the modal closed)
+            if (!timestamp) return showToast("Please choose a valid date and time.", { type: 'error' });
 
             try {
-                closeEditModal();
-                const docRef = doc(db, `users/${currentUser.uid}/records`, id);
-                await updateDoc(docRef, {
-                    type: type,
-                    timestamp: new Date(datetimeVal).toISOString(),
+                await updateDoc(doc(db, `users/${currentUser.uid}/records`, id), {
+                    type,
+                    timestamp,
                     modifiedAt: new Date().toISOString(),
-                    notes: notes
+                    notes
                 });
+                closeEditModal();
+                showToast("Record updated.", { type: 'success' });
             } catch (err) {
                 console.error("Error updating record:", err);
+                showToast("Couldn't update that record. Please try again.", { type: 'error' });
             }
         };
 
         window.deleteRecord = async function(id) {
-            if (!currentUser) return;
-            if (confirm("Are you sure you want to delete this record?")) {
-                try {
-                    await deleteDoc(doc(db, `users/${currentUser.uid}/records`, id));
-                } catch (err) {
-                    console.error("Error deleting record:", err);
-                }
+            if (!requireSignIn()) return;
+            if (!confirm("Are you sure you want to delete this record?")) return;
+            try {
+                await deleteDoc(doc(db, `users/${currentUser.uid}/records`, id));
+                showToast("Record deleted.");
+            } catch (err) {
+                console.error("Error deleting record:", err);
+                showToast("Couldn't delete that record. Please try again.", { type: 'error' });
             }
         };
+
+        // Row action buttons use data attributes + delegation instead of inline onclick with IDs
+        document.getElementById('records-table-body').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            if (btn.dataset.action === 'edit') openEditModal(id);
+            if (btn.dataset.action === 'delete') deleteRecord(id);
+        });
+
+        // Close modals with Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            closeCustomLogModal();
+            closeEditModal();
+            const drawer = document.getElementById('nav-drawer');
+            if (!drawer.classList.contains('-translate-x-full')) toggleMenu();
+        });
+
+        // ---------- Filtering & Rendering ----------
 
         window.filterRecords = function() {
             renderRecords();
         };
+
+        function startOfWeek(date) {
+            // Week starts Sunday (local time)
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - d.getDay());
+            return d;
+        }
 
         function renderRecords() {
             const searchText = document.getElementById('search-input').value.toLowerCase();
@@ -546,49 +754,57 @@
             const dateRange = document.getElementById('filter-date-range').value;
 
             const now = new Date();
+            const weekStart = startOfWeek(now);
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
             const filtered = records.filter(r => {
-                const matchesType = (filterType === 'all' || r.type === filterType);
-                const matchesSearch = !searchText || (r.notes && r.notes.toLowerCase().includes(searchText)) || r.type.toLowerCase().includes(searchText);
-                
-                let matchesDate = true;
+                const type = String(r.type ?? '');
+                const notes = String(r.notes ?? '');
+                const matchesType = (filterType === 'all' || type === filterType);
+                const matchesSearch = !searchText || notes.toLowerCase().includes(searchText) || type.toLowerCase().includes(searchText);
+
                 const recDate = new Date(r.timestamp);
-                if (dateRange === 'today') {
-                    matchesDate = recDate.toDateString() === now.toDateString();
-                } else if (dateRange === 'week') {
-                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    matchesDate = recDate >= weekAgo;
-                }
+                let matchesDate = true;
+                if (dateRange === 'today') matchesDate = recDate.toDateString() === now.toDateString();
+                else if (dateRange === 'week') matchesDate = recDate >= weekStart;
+                else if (dateRange === 'last7') matchesDate = recDate >= sevenDaysAgo;
 
                 return matchesType && matchesSearch && matchesDate;
             });
 
-            document.getElementById('stat-total').innerText = records.length;
+            // v7.11: count reflects the active filters
+            document.getElementById('stat-total').innerText =
+                filtered.length === records.length ? `${records.length}` : `${filtered.length} of ${records.length}`;
 
             const tbody = document.getElementById('records-table-body');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-xs">No records found.</td></tr>`;
+                const msg = records.length === 0 ? 'No records yet.' : 'No records match your filters.';
+                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-xs">${msg}</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = filtered.map(r => {
                 const dateObj = new Date(r.timestamp);
-                const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                const validDate = !isNaN(dateObj.getTime());
+                const dateStr = validDate ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown date';
+                const timeStr = validDate ? dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
 
                 let modStr = '-';
-                if (r.modifiedAt) {
-                    const modObj = new Date(r.modifiedAt);
+                const modObj = new Date(r.modifiedAt);
+                if (r.modifiedAt && !isNaN(modObj.getTime())) {
                     modStr = `${modObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${modObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
                 }
 
-                const isNumOne = r.type === 'Number One';
+                const type = String(r.type ?? '');
+                const isNumOne = type === 'Number One';
+                const safeId = escapeHtml(r.id);
 
                 return `
                     <tr class="hover:bg-slate-50/85 transition border-b border-slate-100 last:border-0">
                         <td class="py-3 px-3 align-top">
                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold ${isNumOne ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-900'}">
                                 ${isNumOne ? '<i class="fa-solid fa-droplet mr-1 text-blue-600"></i>' : '<span class="mr-1">💩</span>'}
-                                ${r.type.replace('Number ', '#')}
+                                ${escapeHtml(type.replace('Number ', '#'))}
                             </span>
                         </td>
                         <td class="py-3 px-3 align-top text-slate-600">
@@ -600,11 +816,11 @@
                             ${modStr}
                         </td>
                         <td class="py-3 px-3 align-top text-right space-x-1 whitespace-nowrap">
-                            <button onclick="openEditModal('${r.id}')" class="text-slate-400 hover:text-blue-600 p-1.5 transition" title="Edit">
-                                <i class="fa-solid fa-pen text-xs"></i>
+                            <button data-action="edit" data-id="${safeId}" class="text-slate-400 hover:text-blue-600 p-1.5 transition" title="Edit" aria-label="Edit record">
+                                <i class="fa-solid fa-pen text-xs pointer-events-none"></i>
                             </button>
-                            <button onclick="deleteRecord('${r.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition" title="Delete">
-                                <i class="fa-solid fa-trash text-xs"></i>
+                            <button data-action="delete" data-id="${safeId}" class="text-slate-400 hover:text-rose-600 p-1.5 transition" title="Delete" aria-label="Delete record">
+                                <i class="fa-solid fa-trash text-xs pointer-events-none"></i>
                             </button>
                         </td>
                     </tr>
@@ -612,138 +828,175 @@
             }).join('');
         }
 
+        // ---------- Backup: Export ----------
+
         window.exportBackupJSON = function() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `hydrolog_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
+            if (!requireSignIn()) return;
+            if (records.length === 0) return showToast("Nothing to export yet.");
+
+            // v7.11: Blob instead of data: URI (no size limits on large histories)
+            const clean = records.map(({ type, timestamp, modifiedAt, notes }) => ({ type, timestamp, modifiedAt, notes: notes || '' }));
+            const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hydrolog_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast(`Exported ${clean.length} records.`, { type: 'success' });
         };
+
+        // ---------- Backup: Import (shared) ----------
+
+        // Takes raw candidate records, validates, de-duplicates against existing data and
+        // within the file itself, then writes in batches. Returns counts for reporting.
+        async function importRecords(candidates) {
+            const existingKeys = new Set(records.map(r => recordKey(r.type, toIso(r.timestamp) || '')));
+            const nowIso = new Date().toISOString();
+            const toAdd = [];
+            let duplicates = 0;
+            let skipped = 0;
+
+            for (const c of candidates) {
+                const type = normalizeType(c.type);
+                const timestamp = toIso(c.timestamp);
+                if (!type || !timestamp) { skipped++; continue; }
+
+                const key = recordKey(type, timestamp);
+                if (existingKeys.has(key)) { duplicates++; continue; }
+                existingKeys.add(key);
+
+                toAdd.push({
+                    type,
+                    timestamp,
+                    modifiedAt: toIso(c.modifiedAt) || nowIso,
+                    notes: String(c.notes ?? '').trim().slice(0, 500)
+                });
+            }
+
+            const colRef = recordsCollection();
+            for (let i = 0; i < toAdd.length; i += BATCH_LIMIT) {
+                const batch = writeBatch(db);
+                toAdd.slice(i, i + BATCH_LIMIT).forEach(rec => batch.set(doc(colRef), rec));
+                await batch.commit();
+            }
+
+            return { added: toAdd.length, duplicates, skipped };
+        }
+
+        function reportImport({ added, duplicates, skipped }) {
+            const parts = [`Imported ${added} record${added === 1 ? '' : 's'}`];
+            if (duplicates) parts.push(`${duplicates} duplicate${duplicates === 1 ? '' : 's'} skipped`);
+            if (skipped) parts.push(`${skipped} invalid row${skipped === 1 ? '' : 's'} skipped`);
+            showToast(parts.join(' · '), { type: added ? 'success' : 'info', duration: 6000 });
+        }
+
+        function readFileFromEvent(event) {
+            const input = event.target;
+            const file = input.files[0];
+            input.value = ''; // allow re-selecting the same file later
+            return file;
+        }
+
+        // ---------- Backup: Import JSON ----------
 
         window.importBackupJSON = async function(event) {
-            if (!currentUser) return alert("Please sign in first.");
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (!Array.isArray(imported)) throw new Error("Invalid format");
-                    const nowIso = new Date().toISOString();
-                    
-                    for (const item of imported) {
-                        await addDoc(collection(db, `users/${currentUser.uid}/records`), {
-                            type: item.type || 'Number One',
-                            timestamp: item.timestamp || nowIso,
-                            modifiedAt: item.modifiedAt || nowIso,
-                            notes: item.notes || ''
-                        });
-                    }
-                    alert(`Successfully imported ${imported.length} records into Firestore!`);
-                } catch (err) {
-                    alert("Error parsing backup file.");
-                    console.error(err);
-                }
-            };
-            reader.readAsText(file);
+            const file = readFileFromEvent(event);
+            if (!file || !requireSignIn()) return;
+
+            const dismissBusy = showToast("Importing JSON backup...", { duration: 0 });
+            try {
+                const imported = JSON.parse(await file.text());
+                if (!Array.isArray(imported)) throw new Error("Backup must be a JSON array of records.");
+                const result = await importRecords(imported);
+                dismissBusy();
+                reportImport(result);
+            } catch (err) {
+                dismissBusy();
+                console.error("JSON Import Error:", err);
+                showToast("Couldn't read that backup file. Make sure it's a HydroLog JSON export.", { type: 'error', duration: 6000 });
+            }
         };
+
+        // ---------- Backup: Import CSV ----------
+
+        function parseCSVRows(str) {
+            const rows = [];
+            let row = [''];
+            let colIdx = 0;
+            let inQuotes = false;
+
+            for (let i = 0; i < str.length; i++) {
+                const c = str[i];
+                const nextC = str[i + 1];
+
+                if (c === '"') {
+                    if (inQuotes && nextC === '"') {
+                        row[colIdx] += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (c === ',' && !inQuotes) {
+                    row.push('');
+                    colIdx++;
+                } else if ((c === '\r' || c === '\n') && !inQuotes) {
+                    if (c === '\r' && nextC === '\n') i++;
+                    rows.push(row);
+                    row = [''];
+                    colIdx = 0;
+                } else {
+                    row[colIdx] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== '') rows.push(row);
+            return rows;
+        }
 
         window.importBackupCSV = async function(event) {
-            if (!currentUser) return alert("Please sign in first.");
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const text = e.target.result;
-                    const parseCSVRows = (str) => {
-                        const rows = [];
-                        let row = [''];
-                        let colIdx = 0;
-                        let inQuotes = false;
-                        
-                        for (let i = 0; i < str.length; i++) {
-                            const c = str[i];
-                            const nextC = str[i + 1];
-                            
-                            if (c === '"') {
-                                if (inQuotes && nextC === '"') {
-                                    row[colIdx] += '"';
-                                    i++;
-                                } else {
-                                    inQuotes = !inQuotes;
-                                }
-                            } else if (c === ',' && !inQuotes) {
-                                row.push('');
-                                colIdx++;
-                            } else if ((c === '\r' || c === '\n') && !inQuotes) {
-                                if (c === '\r' && nextC === '\n') { i++; }
-                                rows.push(row);
-                                row = [''];
-                                colIdx = 0;
-                            } else {
-                                row[colIdx] += c;
-                            }
-                        }
-                        if (row.length > 1 || row[0] !== '') {
-                            rows.push(row);
-                        }
-                        return rows;
-                    };
+            const file = readFileFromEvent(event);
+            if (!file || !requireSignIn()) return;
 
-                    const parsedRows = parseCSVRows(text);
-                    if (parsedRows.length < 2) throw new Error("CSV file is empty or missing data rows");
+            const dismissBusy = showToast("Importing CSV backup...", { duration: 0 });
+            try {
+                // Strip a UTF-8 BOM (Excel exports often include one)
+                const text = (await file.text()).replace(/^\uFEFF/, '');
+                const parsedRows = parseCSVRows(text);
+                if (parsedRows.length < 2) throw new Error("CSV file is empty or missing data rows");
 
-                    const headers = parsedRows[0].map(h => h.trim().toLowerCase());
-                    const typeIdx = headers.findIndex(h => h.includes('type'));
-                    const createdDateIdx = headers.findIndex(h => h.includes('created') || h.includes('date & time'));
-                    const modifiedDateIdx = headers.findIndex(h => h.includes('modified'));
-                    const commentsIdx = headers.findIndex(h => h.includes('comment') || h.includes('note'));
+                const headers = parsedRows[0].map(h => h.trim().toLowerCase());
+                const findCol = (...terms) => headers.findIndex(h => terms.some(t => h.includes(t)));
+                const typeIdx = findCol('type');
+                const createdIdx = findCol('created', 'date & time', 'timestamp');
+                const modifiedIdx = findCol('modified');
+                const commentsIdx = findCol('comment', 'note');
 
-                    let importedCount = 0;
-                    const nowIso = new Date().toISOString();
+                // Fallback to legacy positional layout when headers aren't recognized
+                const col = (cols, idx, fallback) => (idx !== -1 ? cols[idx] : cols[fallback]) ?? '';
 
-                    for (let i = 1; i < parsedRows.length; i++) {
-                        const cols = parsedRows[i].map(s => s.trim().replace(/^"|"$/g, ''));
-                        if (cols.length < 2 || cols.every(c => c === '')) continue;
-
-                        let typeVal = typeIdx !== -1 && cols[typeIdx] ? cols[typeIdx] : cols[1] || 'Number One';
-                        if (typeVal.toLowerCase().includes('one') || typeVal.toLowerCase().includes('1')) typeVal = 'Number One';
-                        if (typeVal.toLowerCase().includes('two') || typeVal.toLowerCase().includes('2')) typeVal = 'Number Two';
-
-                        const rawCreated = createdDateIdx !== -1 && cols[createdDateIdx] ? cols[createdDateIdx] : cols[2];
-                        const parsedCreated = new Date(rawCreated);
-                        const validTimestamp = !isNaN(parsedCreated.getTime()) ? parsedCreated.toISOString() : nowIso;
-
-                        const rawModified = modifiedDateIdx !== -1 && cols[modifiedDateIdx] ? cols[modifiedDateIdx] : cols[3];
-                        const parsedModified = new Date(rawModified);
-                        const validModified = !isNaN(parsedModified.getTime()) ? parsedModified.toISOString() : nowIso;
-
-                        const notesVal = commentsIdx !== -1 && cols[commentsIdx] ? cols[commentsIdx] : (cols[4] || '');
-
-                        await addDoc(collection(db, `users/${currentUser.uid}/records`), {
-                            type: typeVal,
-                            timestamp: validTimestamp,
-                            modifiedAt: validModified,
-                            notes: notesVal
-                        });
-                        importedCount++;
-                    }
-
-                    alert(`Successfully imported ${importedCount} records from CSV into Firestore!`);
-                } catch (err) {
-                    alert("Error parsing CSV file. Check console for details.");
-                    console.error("CSV Import Error:", err);
+                const candidates = [];
+                for (let i = 1; i < parsedRows.length; i++) {
+                    const cols = parsedRows[i].map(s => s.trim());
+                    if (cols.every(c => c === '')) continue;
+                    candidates.push({
+                        type: col(cols, typeIdx, 1),
+                        timestamp: col(cols, createdIdx, 2),
+                        modifiedAt: col(cols, modifiedIdx, 3),
+                        notes: col(cols, commentsIdx, 4)
+                    });
                 }
-            };
-            reader.readAsText(file);
-        };
 
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
+                const result = await importRecords(candidates);
+                dismissBusy();
+                reportImport(result);
+            } catch (err) {
+                dismissBusy();
+                console.error("CSV Import Error:", err);
+                showToast("Couldn't read that CSV file. Check that it has a header row.", { type: 'error', duration: 6000 });
+            }
+        };
     </script>
 </body>
 </html>
